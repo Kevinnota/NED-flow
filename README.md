@@ -4,8 +4,8 @@ NED-flow is a pipeline developed for using <ins>**N**</ins>uclear reference geno
 
 In short, NED-flow is downloading all reference genomes deposited on NCBI. Ned-ref-manager.py is written in a way that it will download all reference genomes the first time – and only updates the exciting reference genomes subsequently. So only new assemblies and updated assemblies are downloaded. Th make-ref-sink.py is a tool that will concatenate bacteria/fungi/archaea into sinks that are used for mapping and removing potential microorganism contamination in reference genomes. The ned-build.nf is a Nextflow tool that will index only the genomes that need to be indexed. It can do this both locally and on an SGE/SLURM cluster. 
 
-[!WARNING]
-Downloading all plant, vertabrate, and invertabrate genomes availible at present requirese ~23T of free disk space. 
+> [!WARNING]
+> Downloading all plant, vertebrate, and invertebrate genomes available at present requires <ins>**~23T**</ins> of free disk space. Before starting to download and build the database, make sure there is enough space available. 
 
 ## Database management
 ### ned-ref-manager.py
