@@ -38,8 +38,10 @@ def rewrite_fastq():
     fastq = io.TextIOWrapper(gzip.open(args.fastq, 'rb'))
     fastq_out = gzip.open(re.sub('fastq.gz', 'dust.fastq.gz', args.fastq), 'wt')
     i=0
+
     while True:
         header = fastq.readline()   # Read the header line (first line of the group)
+        library = re.sub('.*:', '', header)
         header_no_RG = re.sub("@", '' ,header.split('\t')[0].strip())
         if not header:  # End of file check
             break
@@ -61,6 +63,9 @@ def rewrite_fastq():
     fastq.close()
     fastq_out.close()
 
+    print(f'library = {library}')
+    print(f"dustmasker.py version {version}")
+    print(f"dustmasker.py dust_threshold {args.dust_threshold}")
     print(f"number sequence removed {i}, all found: {i==len(read_to_filter)}")
     
 if __name__ == '__main__':

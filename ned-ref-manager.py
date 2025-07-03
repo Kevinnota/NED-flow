@@ -16,8 +16,8 @@ import requests
 
 parser = argparse.ArgumentParser(prog='NCBI Genome indexer', description='')
 parser.add_argument('--database', "-db", help='the genbank databases [archaea, bacteria, fungi, invertebrate, vertebrate_mammalian, vertebrate_other, plant, protozoa, viral]')
-parser.add_argument('--path_to_ref', "-p", help='path to the reference directory', default='.')
-
+parser.add_argument('--path_to_ref_db', "-p", help='path to the reference directory', default='.')
+parser.add_argument('--assembly_list', "-al", help='list of assemblies to download')
 parser.add_argument('--version',  help='print version',action='store_true', default=False)
 args=parser.parse_args()
 
@@ -46,10 +46,32 @@ N_downloaded_failed=0
 ## how many genomes were updated
 N_genomes_updated=0
 
+def get_right_directory():
+    
+    if args.path_to_ref_db == '.':
+        path = os.getcwd()
+    else:
+        path = args.path_to_ref_db.split('/')
+
+    if path.split('/')[-1] == args.database:
+        pass
+    elif path.split('/')[-1] != args.database: 
+        args.path_to_ref_db = f'{path}/{args.database}'
+
+def read_assembly_list():
+    if ',' in args.assembly_list:
+        assembly_list = args.assembly_list.split(',')
+    else:
+        assembly_list=[]
+        file = open(args.assembly_list)
+        for row in file:
+            assembly_list.append(row.strip())
+    return assembly_list
+
 def get_the_assembly_summary():
     print('Download assembly summary from NCBI - might take a few minutes')
     ftp_path = 'rsync://ftp.ncbi.nlm.nih.gov/genomes/genbank/'+args.database+'/assembly_summary.txt'
-    rsync_command = ['rsync', '-a', '--quiet', ftp_path, args.database+'_assembly_summary.txt']
+    rsync_command = ['rsync', '-a', '--quiet', ftp_path, f'{args.path_to_ref_db}/{args.database}_assembly_summary.txt']
     try:
         subprocess.run(rsync_command, check=True)
     except subprocess.CalledProcessError as e:
@@ -58,23 +80,23 @@ def get_the_assembly_summary():
 def read_database_version():
     current_datetime = datetime.datetime.now()
     formatted_datetime = current_datetime.strftime("%Y-%m-%d")
-    if not os.path.isdir('log_files'):
-        os.makedirs('log_files')
+    if not os.path.isdir(f"{args.path_to_ref_db}/log_files"):
+        os.makedirs(f"{args.path_to_ref_db}/log_files")
     
-    if not os.path.isfile('log_files/database_version'):
-        file = open('log_files/database_version', 'w')
+    if not os.path.isfile(f"{args.path_to_ref_db}/log_files/database_version"):
+        file = open(f"{args.path_to_ref_db}/log_files/database_version", 'w')
         file.write('database_version=1; date='+formatted_datetime+'\n')
         file.close()
         database_version=1
 
     else:
-        file = open('log_files/database_version', 'r')
+        file = open(f"{args.path_to_ref_db}/log_files/database_version", 'r')
         database = file.readlines()[0]
         database_version = int(re.sub(';.*', '', re.sub('database_version=', '', database)))
         database_version+=1
         file.close()
 
-        file = open('log_files/database_version', 'w')
+        file = open(f"{args.path_to_ref_db}/log_files/database_version", 'w')
         file.write('database_version='+str(database_version)+'; date='+formatted_datetime+'\n')
         file.close()
 
@@ -85,16 +107,16 @@ def read_and_update_download_history():
     formatted_datetime = current_datetime.strftime("%Y%m%d")
     date_start_download=formatted_datetime
 
-    if not os.path.isdir('log_files'):
-        os.makedirs('log_files')
+    if not os.path.isdir(f"{args.path_to_ref_db}/log_files"):
+        os.makedirs(f"{args.path_to_ref_db}/log_files")
 
-    if not os.path.isfile('log_files/download_history.tsv'):
-        history_file = open('log_files/download_history.tsv', 'w')
+    if not os.path.isfile(f"{args.path_to_ref_db}/log_files/download_history.tsv"):
+        history_file = open(f"{args.path_to_ref_db}/log_files/download_history.tsv", 'w')
         history_file.write('\t'.join(['ref_db_status', 'assembly_accession', 'taxid', 'download_date', 'assembly_level', 'seq_rel_date'])+'\n')
         history_file.close()
 
-    if not os.path.isfile('log_files/download.log'):
-        log_file = open('log_files/download.log', 'w')
+    if not os.path.isfile(f"{args.path_to_ref_db}/log_files/download.log"):
+        log_file = open(f"{args.path_to_ref_db}/log_files/download.log", 'w')
         log_file.write('\t'.join(['database_version','run_start_date', 'N_genomes_downloaded_before', 'N_genomes_downloaded', 'N_genomes_updated', 'total_N_genomes' ,'N_genomes_failed', 'N_genomes_removed'])+'\n')
         log_file.close()
 
@@ -123,7 +145,7 @@ def read_genbank_assembly_summary():
     ## creates a list with genomes that are new and need to be downloaded.
     new_need_to_download = []
     #for file in args.assembly_summary:
-    assembly_summary = open(args.database+'_assembly_summary.txt', 'r')
+    assembly_summary = open(f"{args.database}_assembly_summary.txt", 'r')
 
     total_number_bases_download = 0
     taxon_names_update=[]
@@ -145,6 +167,7 @@ def read_genbank_assembly_summary():
             for item in row_list:
                 if 'assembly_accession' in item:
                     assembly_accession_index=i
+
                 elif 'taxid' in item:
                     taxid=i
                 elif 'refseq_category' in item:
@@ -163,6 +186,10 @@ def read_genbank_assembly_summary():
                     excluded_from_refseq=i
 
                 i+=1
+        if args.assembly_list != None:
+            if re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]) not in assembly_list:
+                continue
+
         #make dict with reference genomes that are representative and which are not
         representative_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[refseq_category]
         excluded_from_refseq_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[excluded_from_refseq]
@@ -174,9 +201,11 @@ def read_genbank_assembly_summary():
         #print(assembly2taxa_name)
         
         #if row_list[refseq_category] != 'representative genome':
-        if row_list[refseq_category] != 'reference genome':
-            not_ref_genome.add(re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index]))
-            continue
+        if args.assembly_list == None:
+            if row_list[refseq_category] != 'reference genome':
+                not_ref_genome.add(re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index]))
+                continue
+
         if ' x ' in row_list[organism_name]:
             #assemblies_to_remove.append(re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]))
             #list_taxa_to_remove.append(row_list[organism_name])
@@ -187,9 +216,11 @@ def read_genbank_assembly_summary():
         if row_list[ftp_path] == "na":
             print('SKIP:', row_list[assembly_accession_index], 'does not have a ftp path')
             continue
-       
-        if os.path.isdir(args.path_to_ref+"/"+assembly_accession_no_version):
-            files_in_dir = os.listdir(args.path_to_ref+"/"+assembly_accession_no_version)
+        
+        if os.path.isdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}"):
+            files_in_dir = os.listdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
+      
+
             if any(fnmatch.fnmatch(filename, row_list[assembly_accession_index] + "*fna.gz") for filename in files_in_dir):
             #if any(row_list[assembly_accession_index] in filename for filename in files_in_dir):
                 N_already_downloaded_before+=1
@@ -201,13 +232,22 @@ def read_genbank_assembly_summary():
             total_number_bases_download+=int(row_list[genome_size])
             taxon_names_to_download.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
 
-    listed_file = os.listdir()
+    ## need to check what this does 230-271
+    try:
+        listed_file = os.listdir(args.path_to_ref_db)
+    except:
+        listed_file = []
+    
     for assembly_accession in listed_file:
-        matching_files = glob.glob(assembly_accession + "/*_assembly_report.txt")
+        #print(assembly_accession)
+        matching_files = glob.glob(f'{args.path_to_ref_db}/{assembly_accession}/*_assembly_report.txt')
+        #print(matching_files)
         if "GCA" not in assembly_accession:
             continue
         if assembly_accession not in assembly2taxa_name:
             file = open(matching_files[0],  'r')
+            #print(f'lalalal_______________')
+            #print(file)
             for row in file:
                 if "Organism name" in row:
                     taxon_name=re.sub(".*:  | \\(.*", "", row.strip())
@@ -229,9 +269,9 @@ def read_genbank_assembly_summary():
                 taxon_names_to_download.remove(re.match(r"(\w+\s\w+)", f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}").group())
             except:
                 ""
-            
-            if assembly_accession in assembly2taxa_name:
-                taxon_names_update.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
+
+            #if assembly_accession in assembly2taxa_name:
+            #    taxon_names_update.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
             #else:
             #    taxon_names_update.append(taxon_name)
             assemblies_to_remove.append(assembly_accession)
@@ -289,7 +329,7 @@ def read_genbank_assembly_summary():
     return required_to_update, new_need_to_download, N_already_downloaded_before, assemblies_to_remove, taxonomy_dict
 
 def download_new_genomes(N_downloaded_success, N_downloaded_failed):
-    history_file = open('log_files/download_history.tsv', 'a')
+    history_file = open(f'{args.path_to_ref_db}/log_files/download_history.tsv', 'a')
     
     ## create lines for for writing a log file
     for item in new_need_to_download:
@@ -298,17 +338,17 @@ def download_new_genomes(N_downloaded_success, N_downloaded_failed):
         assembly_accession_no_version, taxid, assembly_accession, assembly_level, seq_rel_date, ftp_path = item
         history_file.write('\t'.join(['first_download', str(assembly_accession), str(taxid), str(formatted_datetime), str(assembly_level), str(seq_rel_date)])+'\n')
         
-        os.makedirs(assembly_accession_no_version)
+        os.makedirs(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
 
         ftp_path = re.sub("https", "rsync", ftp_path)
-        rsync_command = ['rsync', '-a', '--progress', '--exclude=*_from_genomic*', '--exclude=*_cds_*', '--exclude=*_rna_*', '--include=*_genomic.fna.gz', '--include=*assembly_report.txt', '--include=*_fcs_report.txt', '--exclude=*', ftp_path, assembly_accession_no_version]
+        rsync_command = ['rsync', '-a', '--progress', '--exclude=*_from_genomic*', '--exclude=*_cds_*', '--exclude=*_rna_*', '--include=*_genomic.fna.gz', '--include=*assembly_report.txt', '--include=*_fcs_report.txt', '--exclude=*', ftp_path, f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
 
         # Execute the rsync command
         try:
             subprocess.run(rsync_command, check=True)
             print("Files downloaded successfully.")
             N_downloaded_success+=1
-            log=open(assembly_accession_no_version+'/'+assembly_accession_no_version+'_download.log', 'a')
+            log=open(f'{args.path_to_ref_db}/{assembly_accession_no_version}/{assembly_accession_no_version}_download.log', 'a')
             log.write("\t".join(['first_download', assembly_accession, formatted_datetime])+'\n')
             log.close
 
@@ -318,7 +358,7 @@ def download_new_genomes(N_downloaded_success, N_downloaded_failed):
     return N_downloaded_success, N_downloaded_failed
 
 def update_genomes(N_genomes_updated, N_downloaded_failed):
-    history_file = open('log_files/download_history.tsv', 'a')
+    history_file = open(f'{args.path_to_ref_db}/log_files/download_history.tsv', 'a')
     
     ## create lines for for writing a log file
     for item in required_to_update:
@@ -352,31 +392,33 @@ def update_genomes(N_genomes_updated, N_downloaded_failed):
             
 def write_log_file(date_start_download, database_version):
 
-    log_file = open('log_files/download.log', 'a')
+    log_file = open(f'{args.path_to_ref_db}/log_files/download.log', 'a')
     log_file.write('\t'.join(map(str,[database_version, date_start_download , N_already_downloaded_before, N_downloaded_success, N_genomes_updated, N_already_downloaded_before+N_downloaded_success, N_downloaded_failed, N_removed]))+'\n')
     log_file.close()
 
 def write_db_version_summary(database_version):
     ncbi = NCBITaxa()
 
-    if not os.path.isdir('database_version_summary'):
-        os.makedirs('database_version_summary')
+    if not os.path.isdir(f"{args.path_to_ref_db}/database_version_summary"):
+        os.makedirs(f"{args.path_to_ref_db}/database_version_summary")
     
-    file = open('database_version_summary/summary_version_'+str(f"{database_version:04}")+'.tsv', 'w')  
+    file = open(f'{args.path_to_ref_db}/database_version_summary/summary_version_{database_version:04}.tsv', 'w')  
     file.write("\t".join(['assembly_accession', 'taxa_name', 'phylum_name', 'order_name', 'family_name', 'genus_name', 'taxid', 'Assembly_level', 'Genome_representation'])+'\n')
-    listed_file = os.listdir()
+    listed_file = os.listdir(args.path_to_ref_db)
+    
     for assembly_accession in listed_file:
         if "GCA" not in assembly_accession:
             continue
 
-        files = os.listdir(assembly_accession)
+        files = os.listdir(f'{args.path_to_ref_db}/{assembly_accession}')
         try :
             assembly_report = [file for file in files if "assembly_report.txt" in file][0]
         except:
             print(assembly_accession, 'has no assembly_report.txt')
             continue
         
-        assembly_report_file = open(assembly_accession+"/"+assembly_report)
+  
+        assembly_report_file = open(f'{args.path_to_ref_db}/{assembly_accession}/{assembly_report}')
         for row in assembly_report_file:
             if "Taxid" in row:
                 taxid = re.sub('# Taxid: ', '', row).strip()
@@ -425,7 +467,7 @@ def write_db_version_summary(database_version):
     file.close()
 
 def remove_assemblies():
-    history_file = open('log_files/download_history.tsv', 'a')
+    history_file = open(f'{args.path_to_ref_db}/log_files/download_history.tsv', 'a')
     N_removed=0
     for assembly in assemblies_to_remove:
         current_datetime = datetime.datetime.now()
@@ -444,6 +486,12 @@ if __name__ == '__main__':
         quit()
 
     print("start main\n")
+    get_right_directory()
+    if args.assembly_list != None:
+        print(f'Running contume reference assembly mode')
+        assembly_list = read_assembly_list()
+        
+
     ## Download the ncbi genome list and creates a list with all genomes that need to be download and updated
     get_the_assembly_summary()
     required_to_update, new_need_to_download, N_already_downloaded_before, assemblies_to_remove, taxonomy_dict = read_genbank_assembly_summary()
@@ -462,3 +510,4 @@ if __name__ == '__main__':
     # Write log files
     write_db_version_summary(database_version)
     write_log_file(date_start_download, database_version)
+

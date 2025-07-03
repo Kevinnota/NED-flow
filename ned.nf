@@ -35,7 +35,21 @@ def exit_missing_required(flag){
     exit_with_error_msg("ArgumentError", "missing required argument ${flag}")
 }
 
+// --build this makes the bowtie2 index for reference genomes/ 
+if (params.build){
+    input_dirs = Channel.fromPath(params.path_reference_dbs, type: 'dir')    
 
+    // Bowtie2 index the reference genomes that need to be indexed, and than move them from the Work dir to the dir it supposed to be.
+    if (params.refgenomes){
+    bowtie2_indexer(input_dirs)
+    }
+
+    if (params.sink){
+    bowtie2_indexer_sink(input_dirs)
+    } 
+}
+
+// --preprocessing, does the library triming, identical PCR duplicate removal, and quality filtering
 workflow {
 if (params.preprocessing) {
     // reading in bams as a channel
@@ -77,19 +91,7 @@ if (params.preprocessing) {
     
 }
     
-if (params.build){
-    input_dirs = Channel.fromPath(params.path_reference_dbs, type: 'dir')    
-
-    // Bowtie2 index the reference genomes that need to be indexed, and than move them from the Work dir to the dir it supposed to be.
-    if (params.refgenomes){
-    bowtie2_indexer(input_dirs)
-    }
-
-    if (params.sink){
-    bowtie2_indexer_sink(input_dirs)
-    } 
-}
-
+// --mapping, this does the bowtie2 mapping.
 if (params.mapping) {
     
     // merging fastq files

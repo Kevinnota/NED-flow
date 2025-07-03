@@ -1,5 +1,5 @@
 process MAKE_LOG {
-    maxForks params.maxForks_PRE
+    maxForks params.maxForks
 
     //container "${ workflow.containerEngine == 'singularity'
     //    'https://depot.galaxyproject.org/singularity/fastp:0.24.0--heae3180_1'}"

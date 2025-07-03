@@ -1,5 +1,5 @@
 process MERGER_SUB {
-    maxForks params.maxForks_PRE
+    maxForks params.maxForks
 
     //container "${ workflow.containerEngine == 'singularity'
     //    'https://depot.galaxyproject.org/singularity/blast:2.16.0--hc155240_3'}"

@@ -38,7 +38,7 @@ parser.add_argument('--bam', "-b", nargs='+', help='bam(s)')
 parser.add_argument('--library_type', "-lt", help='library type, single or double stranded, default SS', choices=['SS', "ss", "DS", "ds"], default='SS')
 parser.add_argument('--path_to_references', "-pr", help='path to the references', default='/mnt/sequencedb/bowtie2_RefSeq/800_ncbi_genomes/')
 parser.add_argument('--db_summary', "-db", nargs='+', help='database summary files - manual path selection')
-parser.add_argument('--db_log', "-dl", help='database summary log file written by nf - automatically selects the correct database summary file')
+parser.add_argument('--db_log', "-dl", help='database summary log file written by nf - automatically selects the correct database summary file', default='run_logs/database_version.txt')
 
 parser.add_argument('--json', "-j", help='json file with RG')
 parser.add_argument('--damage', "-d", help='number of nucleotides to calculate damage on, default is first', type=int, default=3)
@@ -401,6 +401,8 @@ def read_database_summary():
             
             db_files = open(args.db_log)
             for row in db_files:
+                if "#" in row :
+                    continue
                 db, version, date = row.strip().split(' ')
                 version = int(re.sub(";", "", version.split('=')[1]))
                 print(f"{db}, V{version:04}")
