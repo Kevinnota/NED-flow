@@ -1212,6 +1212,11 @@ def get_R2_values(bam):
 
     #header = samfile.header.to_dict()
     #print(assembly)
+
+    if os.path.isfile(f"bams_gzset/{assembly}.set.gz") == False:
+        print(f'gzset file not found {assembly}')
+        return
+
     gzset=gzip.open(f"bams_gzset/{assembly}.set.gz", 'rt')
     contigs_to_ignore = set(contg.strip().split('\t')[0] for contg in gzset)
     gzset.close()
@@ -1219,7 +1224,7 @@ def get_R2_values(bam):
     filter_dict={}
     gzset=gzip.open(f"bams_gzset/{assembly}.set.gz", 'rt')
     for row in gzset:
-        contig, filter= row.strip().split('\t')
+        contig, filter = row.strip().split('\t')
         filter_dict[contig]=filter
     gzset.close()
     contig_to_lenght={}

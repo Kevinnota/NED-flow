@@ -13,11 +13,14 @@ import glob
 from colorama import Fore, Style
 import fnmatch
 import requests
+import gzip
 
-parser = argparse.ArgumentParser(prog='NCBI Genome indexer', description='')
+parser = argparse.ArgumentParser(prog='ned-ref-manager.py', description='Downloads and manages reference genomes for NED-flow')
 parser.add_argument('--database', "-db", help='the genbank databases [archaea, bacteria, fungi, invertebrate, vertebrate_mammalian, vertebrate_other, plant, protozoa, viral]')
-parser.add_argument('--path_to_ref_db', "-p", help='path to the reference directory', default='.')
+parser.add_argument('--path_to_ref_db', "-p", help='path to the reference directory, default is the curent working directory', default='.')
 parser.add_argument('--assembly_list', "-al", help='list of assemblies to download')
+
+parser.add_argument('--check-db', help='tool to check the status of the database')
 parser.add_argument('--version',  help='print version',action='store_true', default=False)
 args=parser.parse_args()
 
@@ -26,8 +29,12 @@ args=parser.parse_args()
             ## V1.1 
             # It will remove genomes that are no longer representative for the species.
             # It will also remove genomes that are excluded from refseq if there are any. 
-version="NCBI Genome indexer: version - v1.2 24 Aug-2024" 
+#version="NCBI Genome indexer: version - v1.2 24 Aug-2024" 
             # excludes hybrids
+version="NCBI Genome indexer: version - v1.3 23 Jul-2025"
+            # fixed bug were new reference genomes of species that already excist in the database are now shown as updates.
+            # for genomes that do not have a ftp link in the assembly_summary.txt, the link is created from availible information.
+            # made a function to check if the database is correct - remove empty directories and gives stats
 
 ftp_server = 'ftp.ncbi.nlm.nih.gov'
 
@@ -71,7 +78,7 @@ def read_assembly_list():
 def get_the_assembly_summary():
     print('Download assembly summary from NCBI - might take a few minutes')
     ftp_path = 'rsync://ftp.ncbi.nlm.nih.gov/genomes/genbank/'+args.database+'/assembly_summary.txt'
-    rsync_command = ['rsync', '-a', '--quiet', ftp_path, f'{args.path_to_ref_db}/{args.database}_assembly_summary.txt']
+    rsync_command = ['rsync', '-a', '--no-motd', '--quiet', ftp_path, f'{args.path_to_ref_db}/{args.database}_assembly_summary.txt']
     try:
         subprocess.run(rsync_command, check=True)
     except subprocess.CalledProcessError as e:
@@ -133,8 +140,13 @@ def get_common_names_gbif(scientific_name):
 
         for v in vernaculars['results']:
             if v.get('language') == 'eng' and 'vernacularName' in v:
-                return v['vernacularName']
-        return "None" 
+                vernacularName = v['vernacularName']
+                if ',' in v['vernacularName']:
+                    vernacularName=re.sub(',.*', '', vernacularName)
+                    return vernacularName
+                elif vernacularName != "" :
+                    return vernacularName
+        return "" 
         
 
 def read_genbank_assembly_summary(): 
@@ -152,11 +164,13 @@ def read_genbank_assembly_summary():
     taxon_names_to_download=[]
     assemblies_to_remove=[]
     list_taxa_to_remove=[]
+    list_no_longer_ref_genome=[]
 
     representative_dict={}
     excluded_from_refseq_dict={}
     taxonomy_dict={}
     assembly2taxa_name={}
+   
     not_ref_genome = set()
     for row in assembly_summary:
         row_list = row.strip().split('\t')
@@ -176,6 +190,8 @@ def read_genbank_assembly_summary():
                     assembly_level=i 
                 elif 'seq_rel_date' in item:
                     seq_rel_date=i
+                elif 'asm_name' in item:
+                    asm_name=i
                 elif 'ftp_path' in item:
                     ftp_path=i
                 elif 'genome_size' in item:
@@ -198,9 +214,8 @@ def read_genbank_assembly_summary():
         taxonomy_dict[assembly_accession_no_version] = [assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/']
         
         assembly2taxa_name[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[organism_name]
-        #print(assembly2taxa_name)
         
-        #if row_list[refseq_category] != 'representative genome':
+        ## takes only assemblies that are given in a list
         if args.assembly_list == None:
             if row_list[refseq_category] != 'reference genome':
                 not_ref_genome.add(re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index]))
@@ -210,21 +225,43 @@ def read_genbank_assembly_summary():
             #assemblies_to_remove.append(re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]))
             #list_taxa_to_remove.append(row_list[organism_name])
             continue
+
         if row_list[excluded_from_refseq] not in ['na', 'derived from single cell']:
             continue
 
+        ## this makes an ftp link if the link is not given in the assembly_summary file
         if row_list[ftp_path] == "na":
-            print('SKIP:', row_list[assembly_accession_index], 'does not have a ftp path')
-            continue
-        
+            #print('SKIP:', row_list[assembly_accession_index], 'does not have a ftp path')
+            assembly_number_no_version=re.sub('GCA_|\\.[0-9].*', '', row_list[assembly_accession_index])
+            
+            triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
+            assembly_name = re.sub(' ', '_', row_list[asm_name])
+            ftp_path_sting=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{row_list[assembly_accession_index]}_{assembly_name}"
+            
+            
+            row_list[ftp_path]=ftp_path_sting
+            row_list[ftp_path]
+            #print(row_list)
+            #quit()
+            #continue
+
         if os.path.isdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}"):
             files_in_dir = os.listdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
-      
+            assebly_name=re.sub(r'\+', '', row_list[asm_name])
+            assebly_name=re.sub(' _', '_', assebly_name)
+            assebly_name=re.sub(' ', '_', assebly_name)
 
-            if any(fnmatch.fnmatch(filename, row_list[assembly_accession_index] + "*fna.gz") for filename in files_in_dir):
+            if any(filename == f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz" for filename in files_in_dir):
+            #if any(fnmatch.fnmatch(filename, row_list[assembly_accession_index] + "*fna.gz") for filename in files_in_dir):
             #if any(row_list[assembly_accession_index] in filename for filename in files_in_dir):
                 N_already_downloaded_before+=1
             else:
+                #print('')
+                #print(row_list[asm_name])
+                #print(f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz")
+                #print('')
+                #print(files_in_dir)
+                #print('-----------_------------_------------')
                 required_to_update.append([assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/'])
                 taxon_names_update.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
         else:
@@ -246,40 +283,37 @@ def read_genbank_assembly_summary():
             continue
         if assembly_accession not in assembly2taxa_name:
             file = open(matching_files[0],  'r')
-            #print(f'lalalal_______________')
-            #print(file)
             for row in file:
                 if "Organism name" in row:
                     taxon_name=re.sub(".*:  | \\(.*", "", row.strip())
                     break
+
+        ## this shows that genomes that are represed - they are no longer in the list of availible genomes 
         if assembly_accession not in representative_dict:
-            print(assembly_accession, taxon_name, "<---")
-            #assemblies_to_remove.append(assembly_accession)
+            #print(assembly_accession, taxon_name, "<---")
+            list_taxa_to_remove.append(f"{assembly_accession}\t{taxon_name}")
+            assemblies_to_remove.append(assembly_accession) 
             continue
-        #if representative_dict[assembly_accession] != 'representative genome':
+        
+        ## this gives a list of taxa that used to be reference genome but are no longer - for these genomes there will be an 'update'
         if representative_dict[assembly_accession] != 'reference genome':
-            #print(representative_dict[assembly_accession])
-            #print(assembly2taxa_name[assembly_accession])
+
             try:
                 taxon_names_to_download.remove(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
             except:
                 ""
-            
+        
             try:
                 taxon_names_to_download.remove(re.match(r"(\w+\s\w+)", f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}").group())
             except:
                 ""
 
-            #if assembly_accession in assembly2taxa_name:
-            #    taxon_names_update.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
-            #else:
-            #    taxon_names_update.append(taxon_name)
+            #print(f"{assembly_accession}, {assembly2taxa_name[assembly_accession]}")
+            list_no_longer_ref_genome.append(assembly2taxa_name[assembly_accession])
             assemblies_to_remove.append(assembly_accession)
 
-            #print(taxonomy_dict[assembly_accession])
 
         if excluded_from_refseq_dict[assembly_accession] not in ['na', 'derived from single cell']: 
-            #print(excluded_from_refseq_dict[assembly_accession] )
             list_taxa_to_remove.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
             assemblies_to_remove.append(assembly_accession) 
 
@@ -289,23 +323,51 @@ def read_genbank_assembly_summary():
         taxon_list = [re.sub(".*\t", '', item) for item in taxon_names_update]
         n_new_downloads=0
         for item in taxon_names_to_download:
+            if re.sub(".*\t", '', item) in list_no_longer_ref_genome:
+                continue
+            
             if re.sub(".*\t", '', item) in taxon_list:
                 continue
             n_new_downloads+=1
            
-            print(f'{item} \t {get_common_names_gbif(item.split('\t')[1])}')
+            common_name = get_common_names_gbif(item.split('\t')[1])
+            #print(f"\n{common_name}")
+            if common_name != "" and common_name != None :
+                print(f'{item} ({common_name})')
+            else :
+                print(f'{item}')
         print("")
+
     else:
         n_new_downloads = len(taxon_names_to_download)
-        
-    if len(taxon_names_update) <= 250:
+
+    
+    if len(taxon_names_update) <= 250 and not len(taxon_names_update)==0:
         print(Fore.YELLOW+"taxa that need to be updated"+Style.RESET_ALL)
+        print('\t'+Fore.YELLOW+"new version"+Style.RESET_ALL)
         for item in taxon_names_update:
-            print(f'{item} \t {get_common_names_gbif(item.split('\t')[1])}')
+            common_name = get_common_names_gbif(item.split('\t')[1])
+            if common_name != "" and common_name != None :
+                print(f'{item} ({common_name})')
+            else :
+                print(f'{item}')
+        print("")
+
+        print('\t'+Fore.YELLOW+"new genome"+Style.RESET_ALL)
+        for item in taxon_names_to_download:
+            if re.sub(".*\t", '', item) not in list_no_longer_ref_genome:
+                continue
+            common_name = get_common_names_gbif(item.split('\t')[1])
+            if common_name != "" and common_name != None :
+                print(f'{item} ({common_name})')
+            else :
+                print(f'{item}')
         print("")
 
     if len(list_taxa_to_remove) <= 250:
-        print(Fore.RED +"taxa that need to be removed"+Style.RESET_ALL)
+        if len(taxon_names_update) != 0:
+            print(Fore.RED +"taxa that need to be removed"+Style.RESET_ALL)
+
         taxon_list = [re.sub(".*\t", '', item) for item in taxon_names_update]
         k=0
         n_remove=0
@@ -313,16 +375,28 @@ def read_genbank_assembly_summary():
             if re.sub(".*\t", '', item) in taxon_list:
                 k+=1
                 continue
-            print(f'{item} \t {get_common_names_gbif(item.split('\t')[1])}')
+            if re.sub(".*\t", '', item) in list_no_longer_ref_genome:
+                continue
+
+            common_name = get_common_names_gbif(item.split('\t')[1])
+            if common_name != "" and common_name != None :
+                print(f'{item} ({common_name})')
+            else :
+                print(f'{item}')
             n_remove+=1
-        if k == len(list_taxa_to_remove):
-            print(f"No assemblies to remove")
+        #if k == len(list_taxa_to_remove):
+        #    print(f"No assemblies to remove")
         print("")
 
-    #print("")
     #print(assemblies_to_remove)
-    #quit()
-    response = input('\n'+str(n_new_downloads)+" new genomes, "+str(len(taxon_names_update))+" to be updated, and "+str(n_remove)+" assemblies should be removed\nRequires and estimate of "+ str(int((total_number_bases_download*0.34)/(1024*1024*1024))) +" gb of free disk space\n\nDo you want to continue (Yes/No): ")
+    #print(f"\nNumber of genomes to remove {len(assemblies_to_remove)}\n")
+
+    response = input(
+    f"\n{n_new_downloads} new genomes, {len(taxon_names_update)} to be updated, and {n_remove} assemblies should be removed\n"
+    f"Requires an estimate of {Fore.RED}{int((total_number_bases_download * 0.34) / (1024 * 1024 * 1024))} gb{Style.RESET_ALL} of free disk space\n\n"
+    "Do you want to continue (Yes/No): "
+    )
+    
     if response not in ['y', 'Y', 'yes', 'Yes'] :
         sys.exit(1) 
 
@@ -340,21 +414,29 @@ def download_new_genomes(N_downloaded_success, N_downloaded_failed):
         
         os.makedirs(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
 
+        print(ftp_path)
+        quit()
         ftp_path = re.sub("https", "rsync", ftp_path)
-        rsync_command = ['rsync', '-a', '--progress', '--exclude=*_from_genomic*', '--exclude=*_cds_*', '--exclude=*_rna_*', '--include=*_genomic.fna.gz', '--include=*assembly_report.txt', '--include=*_fcs_report.txt', '--exclude=*', ftp_path, f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
+        assembly_name = re.sub('.*/', '', ftp_path)
+
+        #rsync_command = ['rsync', '-a', '--no-motd', '--progress', '--exclude=*_from_genomic*', '--exclude=*_cds_*', '--exclude=*_rna_*', '--include=*_genomic.fna.gz', '--include=*assembly_report.txt', '--include=*_fcs_report.txt', '--exclude=*', ftp_path, f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
+        rsync_command = ['rsync', '-a', '--no-motd', '--progress', f'{ftp_path}/{assembly_name}_genomic.fna.gz', f'{ftp_path}/{assembly_name}_fcs_report.txt', f'{ftp_path}/{assembly_name}_assembly_report.txt', f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
 
         # Execute the rsync command
-        try:
-            subprocess.run(rsync_command, check=True)
-            print("Files downloaded successfully.")
-            N_downloaded_success+=1
-            log=open(f'{args.path_to_ref_db}/{assembly_accession_no_version}/{assembly_accession_no_version}_download.log', 'a')
-            log.write("\t".join(['first_download', assembly_accession, formatted_datetime])+'\n')
-            log.close
+        for attempt in range(5):
+            try:
+                subprocess.run(rsync_command, check=True)
+                print("Files downloaded successfully.")
+                N_downloaded_success+=1
+                log=open(f'{args.path_to_ref_db}/{assembly_accession_no_version}/{assembly_accession_no_version}_download.log', 'a')
+                log.write("\t".join(['first_download', assembly_accession, formatted_datetime])+'\n')
+                log.close
+                break
 
-        except subprocess.CalledProcessError as e:
-            print(f"Error downloading files: {e}")
-            N_downloaded_failed+=1
+            except subprocess.CalledProcessError as e:
+                print(f"Error downloading files: {e}")
+                N_downloaded_failed+=1
+
     return N_downloaded_success, N_downloaded_failed
 
 def update_genomes(N_genomes_updated, N_downloaded_failed):
@@ -374,20 +456,29 @@ def update_genomes(N_genomes_updated, N_downloaded_failed):
                 os.remove(assembly_accession_no_version+'/'+file)
         
         ftp_path = re.sub("https", "rsync", ftp_path)
-        rsync_command = ['rsync', '-a', '--progress', '--include=*fna.gz', '--include=*assembly_report.txt', '--exclude=*', ftp_path, assembly_accession_no_version]
-
+        ftp_path = re.sub('/$', '', ftp_path)
+        assembly_name = re.sub('.*/', '', ftp_path)
+        print(f'{ftp_path}/{assembly_name}_genomic.fna.gz')
+        print(assembly_name)
+        print(ftp_path)
+        quit()
+        #rsync_command = ['rsync', '-a', '--no-motd', '--progress', '--include=*fna.gz', '--include=*assembly_report.txt', '--exclude=*', ftp_path, assembly_accession_no_version]
+        rsync_command = ['rsync', '-a', '--no-motd', '--progress', f'{ftp_path}/{assembly_name}_genomic.fna.gz', f'{ftp_path}/{assembly_name}_fcs_report.txt', f'{ftp_path}/{assembly_name}_assembly_report.txt', f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
+        
         # Execute the rsync command
-        try:
-            subprocess.run(rsync_command, check=True)
-            print("Files downloaded successfully.")
-            N_genomes_updated+=1
-            log=open(assembly_accession_no_version+'/'+assembly_accession_no_version+'_download.log', 'a')
-            log.write("\t".join(['updated', assembly_accession, formatted_datetime])+'\n')
-            log.close()
-        except subprocess.CalledProcessError as e:
-            print(f"Error downloading files: {e}")
-            N_downloaded_failed+=1
-    
+        for attempt in range(5):
+            try:
+                subprocess.run(rsync_command, check=True)
+                print("Files downloaded successfully.")
+                N_genomes_updated+=1
+                log=open(assembly_accession_no_version+'/'+assembly_accession_no_version+'_download.log', 'a')
+                log.write("\t".join(['updated', assembly_accession, formatted_datetime])+'\n')
+                log.close()
+                break
+            except subprocess.CalledProcessError as e:
+                print(f"Error downloading files: {e}")
+                N_downloaded_failed+=1
+        
     return N_genomes_updated, N_downloaded_failed
             
 def write_log_file(date_start_download, database_version):
@@ -480,12 +571,283 @@ def remove_assemblies():
 
     return N_removed
 
+def check_database_consistency():
+    required_suffixes = ['.1.bt2', '.2.bt2', '.3.bt2', '.4.bt2', '.rev.1.bt2', '.rev.2.bt2']
+    required_suffixes_large = ['.1.bt2l', '.2.bt2l', '.3.bt2l', '.4.bt2l', '.rev.1.bt2l', '.rev.2.bt2l']
+        
+    ii=0
+    current_datetime = datetime.datetime.now()
+    formatted_datetime = current_datetime.strftime("%Y-%m-%d")
+    files_in_dir = os.listdir(f"{args.path_to_ref_db}")
+
+    number_of_fcs_reports_downloaded = 0
+    number_of_multi_version_error = 0
+    number_of_old_files = 0
+    number_of_asseblies_without_fna = 0
+    genome_suppressed = 0
+    not_indexed = 0
+    index_incomplete = 0
+
+    list_assemblies_no_fna = []
+    list_assemblies_multi = []
+    no_index_list = []
+    index_incomplete_list = []
+
+    progress = tqdm(total=len(files_in_dir), desc='number of assemblies checked')
+
+    ## reads the latest downloaded assembly summary
+    assembly_summary = open(f"{next(f for f in files_in_dir if f.endswith('_assembly_summary.txt'))}", 'r')
+    assembly2ftp_link={}
+    assembly2genome_size={}
+    for row in assembly_summary:
+        row_list=row.split('\t')
+        if '##' in row:
+            continue
+            
+        i=0    
+        if '#' in row:
+            for item in row.split('\t'):
+                if item == 'ftp_path' :
+                    ftp_path_index=i
+                if item == '#assembly_accession' :
+                    assembly_accession_index=i
+                if item == 'asm_name' :
+                    asm_name_index=i
+                if item == 'genome_size':
+                    genome_size_index = i
+                i+=1
+        assembly_number_no_version = re.sub('GCA_|\\.[0-9].*', '', row_list[assembly_accession_index])
+        ftp_path_string = row_list[ftp_path_index]
+        
+        if row_list[ftp_path_index] == '':
+            triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
+            assembly_name = re.sub(' ', '_', row_list[asm_name])
+
+            ftp_path_string=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{row_list[assembly_accession_index]}_{assembly_name}"
+
+        assembly2ftp_link[f'GCA_{assembly_number_no_version}'] = ftp_path_string
+        assembly2genome_size[f'GCA_{assembly_number_no_version}'] = row_list[genome_size_index]
+
+    ## checks if the ftp path is still up to date.
+    for item in files_in_dir:
+        #print(item)
+        if "GCA" not in item:
+            progress.update()
+            continue
+        files = os.listdir(f"{args.path_to_ref_db}/{item}")
+        count = sum(f.endswith('.fna.gz') for f in files)
+        
+        ## check if the fna file still excist
+        
+        try:
+            fna_file = f"{next(f for f in files if f.endswith('fna.gz'))}"
+        except:
+            list_assemblies_no_fna.append(item)
+            #shutil.rmtree(item)
+
+            number_of_asseblies_without_fna += 1
+            continue
+
+        assembly_accession_name = re.sub('_genomic.fna.gz', '', fna_file)
+
+        assembly_number_no_version = re.sub('\\..*|GCA_', '', fna_file)
+        triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
+
+        ftp_path_fna=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{assembly_accession_name}" #/{fna_file}"
+        try:
+            if ftp_path_fna != assembly2ftp_link[item]:
+
+                #print(item)
+                #print(ftp_path_fna)
+                #print(assembly2ftp_link[item])
+                #print('')
+                number_of_old_files += 1    
+        except:
+            #print(item)
+            genome_suppressed += 1
+        
+        set_assembly_numbers=set()
+        
+        if sum(f.endswith('.fna.gz') for f in files) != 1:
+
+            for file in files:
+                assembly=re.sub('_[aA-zZ].*', '', file)
+                if '.' in assembly:
+                    set_assembly_numbers.add(re.sub('_[aA-zZ].*', '', file))
+            if len(set_assembly_numbers) == 2:
+                # get latest version of the assembly
+                latest_version = max(set_assembly_numbers, key=lambda x: int(x.split(".")[1]))
+            
+            for file in files:
+                if latest_version not in file and not "_download.log" in file:
+                    os.remove(f"{args.path_to_ref_db}/{item}/{file}")
+            number_of_multi_version_error+=1
+            list_assemblies_multi.append(item)
+        #if sum(f.endswith('.fna.gz') for f in files) == 0:
+        #    print(f'{item} has no fna file')
+        #    print(item)
+
+        progress.update()
+        
+
+        ## checks if fcs files were properly downloaded, and updates the assemblies for which this was not the case.
+        if sum(f.endswith('fcs_report.txt') for f in files) == 0:
+            file = open(f"{args.path_to_ref_db}/{item}/{next(f for f in files if f.endswith('assembly_report.txt'))}")
+            for row in file :
+                if 'Assembly name' in row:
+                    asm_name = re.sub('.*:| ', '', row.strip())
+                if 'GenBank assembly accession' in row :
+                    assembly_accession = re.sub('.*:| ', '', row.strip())
+            file.close()
+            
+            assembly_number_no_version=re.sub('GCA_', '', item)
+            triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
+            ftp_path_sting=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{assembly_accession}_{asm_name}/{assembly_accession}_{asm_name}_fcs_report.txt"
+
+            ftp_path = re.sub("https", "rsync", ftp_path_sting)
+            rsync_command = ['rsync', '-a', '--no-motd', ftp_path, f"{args.path_to_ref_db}/{item}"]
+            for attempt in range(2):
+                try:
+                    subprocess.run(rsync_command, check=True, stderr=subprocess.DEVNULL)
+                    log=open(f"{item}/{item}_download.log", 'a')
+                    log.write("\t".join(['updated fcs report', assembly_accession, formatted_datetime])+'\n')
+                    log.close()
+
+                    number_of_fcs_reports_downloaded+=1
+                except :
+                    pass
+                    #print(f"Error downloading files")
+    
+
+        ## checks if the file sizes is resonable
+        #print(assembly2genome_size[item])
+        #print(item)
+        
+        #file = gzip.open(glob.glob(f'{item}/{item}*_genomic.fna.gz')[0], 'rt')
+        #iupac_bases = set("ACGTRYKMSWBDHVN")
+        #genome_size=0
+        #for row in file :
+        #    if '>' in row:
+        #        continue
+        #    if set(row.strip().upper()).issubset(iupac_bases) != True:
+        #        print(row)
+        #        continue
+        #    genome_size+=len(row.strip())
+        #print(f'counted geonme size : {genome_size}')
+        #print(f'writen genome size : {assembly2genome_size[item]}')
+        #if ii == 10:
+        #    quit()
+        #ii += 1
+        #continue
+        
+        file_size=os.path.getsize(glob.glob(f'{item}/{item}*_genomic.fna.gz')[0])
+        try:
+            estimated_file_size=int(int(assembly2genome_size[item]) * 0.34)
+        except:
+            continue
+        if file_size > estimated_file_size*1.4:
+            print(estimated_file_size)
+            print(estimated_file_size*1.4)
+            print(file_size)
+            print(f'{item} fna file is to large {estimated_file_size} bytes')
+
+        #elif file_size < estimated_file_size*0.85:
+        #    print(file_size-estimated_file_size)
+        #    print(f'{item} fna file is too small {estimated_file_size} bytes')
+        
+    ## check if index has been made or not, or is incomplete
+        #print(glob.glob(f'{item}/{item}*_genomic.fna.gz')[0])
+        file_base = re.sub('.*/', '', glob.glob(f'{item}/{item}*_genomic.fna.gz')[0])
+        #print(file_base)
+        #file_base = f'{re.sub('.*/','', assembly2ftp_link[item])}_genomic.fna.gz'
+        #print(file_base)
+        #quit()
+        missing = []
+        for suf_bt2, suf_bt2l in zip(required_suffixes, required_suffixes_large):
+             if not any(f in files for f in [file_base + suf_bt2, file_base + suf_bt2l]):
+                missing.append(file_base + suf_bt2 + " or " + suf_bt2l)
+        if len(missing)!=0 and not any(filename.endswith('.tmp') for filename in files):
+            no_index_list.append(item)
+            not_indexed+=1
+        elif len(missing)!=0 and any(filename.endswith('.tmp') for filename in files):
+            for file in files:
+                if file.endswith('.tmp') or file.endswith('.sa') :
+                    os.remove(f'{item}/{file}')
+
+            index_incomplete_list.append(item)
+            index_incomplete+=1
+  
+
+    progress.close()
+    print('')
+    print(f"Checked:\n")
+    print(f"\tmultiple assemblies in one dir: {number_of_multi_version_error}")
+    print(f"\tfcs reports downloaded: {number_of_fcs_reports_downloaded}")
+    print(f"\tftp paths that were changed: {number_of_old_files}")
+    print(f"\tgenome suppressed: {genome_suppressed}")   
+    print(f"\tasseblies without fna: {number_of_asseblies_without_fna}") 
+    print(f"\tasseblies not indexed: {not_indexed}") 
+    print('')
+
+
+    print(f'Recommendations:\n')
+    if number_of_multi_version_error+number_of_fcs_reports_downloaded+number_of_old_files+genome_suppressed+not_indexed+index_incomplete != 0:
+        if number_of_multi_version_error != 0:
+            print(f'\t> Some asseblies had multiple versions')
+            print(f'\t  check if there is only one version left for these assemblies:')
+            for assembly in list_assemblies_multi:
+                print(f'\t{assembly}')
+            print('')
+
+        if number_of_fcs_reports_downloaded != 0:
+            print(f'\t> Some fcs reports were not present, they are downloaded now so no acction required')
+            print('')
+
+        if number_of_old_files != 0:
+            print(f'\t> NCBI changed to assembly file(s)')
+            print(f'\t\trun ned-ref-manager.py again, it will automatically update the new file')
+            print('')
+
+        if genome_suppressed != 0:
+            print(f'\t> NCBI removed these assemblies from the list - its unfortunate, but they cant be used')
+            print(f'\t\tno action required')
+            print('')
+
+        if number_of_asseblies_without_fna != 0:
+            print(f'\t> Some asseblies did not have a fna file')
+            for assembly in list_assemblies_no_fna:
+                print(f'\t\t{assembly}')
+            print(f"\t  there is noting that can be done, wait a few days and check if the file is present than")
+            print('')
+
+        if not_indexed != 0 :
+            print(f'\t> Some assemblies were not indexed\n')
+            for assembly in no_index_list:
+                print(f'\t\t{assembly}')
+            print(f'\n\t\trun nextflow ned.nf --build')
+            print('')
+
+        if index_incomplete != 0 :
+            print(f'\t> Some assemblies the indexing was not completed')
+            for assembly in index_incomplete_list:
+                print(f'\t\t{assembly}')
+            print(f'\n\tthe incomplete files were removed')
+            print(f'\t\trun nextflow ned.nf --build\n')
+            print('')
+    else:
+        print(f"Everything looks good, no action is needed")
+        
+    print(' ')
 if __name__ == '__main__':
     if args.version == True :
         print(version)
         quit()
 
     print("start main\n")
+    if args.check-db == True:
+        check_database_consistency()
+        quit()
+
     get_right_directory()
     if args.assembly_list != None:
         print(f'Running contume reference assembly mode')
