@@ -11,6 +11,8 @@
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=88f1af25"></script>
       <script src="_static/doctools.js?v=888ff710"></script>
       <script src="_static/sphinx_highlight.js?v=4825356b"></script>
@@ -69,12 +71,14 @@
            <div itemprop="articleBody">
              
   <section id="welcome-to-ned-flow-s-documentation">
-<h1>Welcome to NED-flow’s documentation!<a class="headerlink" href="#welcome-to-ned-flow-s-documentation" title="Link to this heading">¶</a></h1>
+<h1>Welcome to NED-flow’s documentation!<a class="headerlink" href="#welcome-to-ned-flow-s-documentation" title="Link to this heading"></a></h1>
+<p>NED-flow is a pipeline developed for using Nuclear reference genomes to classify reads obtained from shotgun-sequenced ancient samples Environmental DNA using a Nextflow backbone. The tool contains tools for database management &amp; building and for preprocessing reads, mapping and taxonomic classifying. The pipeline was designed specifically for nuclear reference genomes/assemblies obtained from GenBank.</p>
+<p>In short, NED-flow is downloading all reference genomes deposited on NCBI. Ned-ref-manager.py is written in a way that it will download all reference genomes the first time – and only updates the existing reference genomes subsequently. Only new assemblies and updated assemblies are downloaded. The make-ref-sink.py is a tool that will concatenate bacteria/fungi/archaea genomes into sinks that are used for mapping and removing potential microorganism contamination in reference genomes. The ned.nf –build is a Nextflow tool that will index only the genomes that need to be indexed. It can do this both locally and on an SGE/SLURM cluster.</p>
 <div class="toctree-wrapper compound">
 </div>
 </section>
 <section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
