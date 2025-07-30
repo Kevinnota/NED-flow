@@ -2,11 +2,13 @@
 
 import os
 import sys
+import re
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
 project = 'NED-flow'
+slug = re.sub(r'\W+', '-', project.lower())
 copyright = '2025, Kevin Nota, Benjamin Vernot'
 author = 'Kevin Nota, Benjamin Vernot'
 release = 'stable-beta_1'
@@ -43,6 +45,13 @@ html_theme_options = {
 }
 html_context = {}
 
+if not 'READTHEDOCS' in os.environ:
+    html_static_path = ['_static/']
+    html_js_files = ['debug.js']
+    html_context["DEBUG"] = True
+    
+htmlhelp_basename = slug
+    
 # -- Dark mode toggle --------------------------------------------------------
 
 default_dark_mode = True
@@ -50,3 +59,17 @@ default_dark_mode = True
 # -- Static files (custom CSS, images, etc.) ---------------------------------
 
 html_static_path = ['_static']
+
+latex_documents = [
+  ('index', '{0}.tex'.format(slug), project, author, 'manual'),
+]
+
+man_pages = [
+    ('index', slug, project, [author], 1)
+]
+
+texinfo_documents = [
+  ('index', slug, project, author, slug, project, 'Miscellaneous'),
+]
+
+
