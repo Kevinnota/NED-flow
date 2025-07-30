@@ -14,7 +14,7 @@ In short, NED-flow is downloading all reference genomes deposited on NCBI. Ned-r
    :maxdepth: 2
    :caption: Contents:
 
-
+   usage
 
 Indices and tables
 ==================
