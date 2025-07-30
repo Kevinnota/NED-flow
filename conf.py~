@@ -11,10 +11,12 @@ copyright = '2025, Kevin Nota, Benjamin Vernot'
 author = 'Kevin Nota, Benjamin Vernot'
 release = '0.1.0_beta_1'
 
-#import sphinx_rtd_theme
+import sphinx_rtd_theme
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
+extensions = []
 
 templates_path = ['_templates']
 exclude_patterns = []
@@ -23,12 +25,7 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-out
 
-html_theme = "pydata_sphinx_theme"
-
-extensions = ["sphinx.ext.autodoc"] 
+html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 html_static_path = ['_static']
-
-html_theme_options = {
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
-}
