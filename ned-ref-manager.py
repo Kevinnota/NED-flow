@@ -20,7 +20,7 @@ parser.add_argument('--database', "-db", help='the genbank databases [archaea, b
 parser.add_argument('--path_to_ref_db', "-p", help='path to the reference directory, default is the curent working directory', default='.')
 parser.add_argument('--assembly_list', "-al", help='list of assemblies to download')
 
-parser.add_argument('--check-db', help='tool to check the status of the database')
+parser.add_argument('--check-db', action='store_true', help='tool to check the status of the database')
 parser.add_argument('--version',  help='print version',action='store_true', default=False)
 args=parser.parse_args()
 
@@ -78,11 +78,13 @@ def read_assembly_list():
 def get_the_assembly_summary():
     print('Download assembly summary from NCBI - might take a few minutes')
     ftp_path = 'rsync://ftp.ncbi.nlm.nih.gov/genomes/genbank/'+args.database+'/assembly_summary.txt'
+    
     rsync_command = ['rsync', '-a', '--no-motd', '--quiet', ftp_path, f'{args.path_to_ref_db}/{args.database}_assembly_summary.txt']
-    try:
-        subprocess.run(rsync_command, check=True)
-    except subprocess.CalledProcessError as e:
-            print(f"Error downloading files: {e}")
+    for attempt in range(5):
+        try:
+            subprocess.run(rsync_command, check=True, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+                print(f"Error downloading files: {e}")
 
 def read_database_version():
     current_datetime = datetime.datetime.now()
@@ -249,6 +251,7 @@ def read_genbank_assembly_summary():
             files_in_dir = os.listdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
             assebly_name=re.sub(r'\+', '', row_list[asm_name])
             assebly_name=re.sub(' _', '_', assebly_name)
+            assebly_name=re.sub('_ ', '_', assebly_name)
             assebly_name=re.sub(' ', '_', assebly_name)
 
             if any(filename == f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz" for filename in files_in_dir):
@@ -278,8 +281,8 @@ def read_genbank_assembly_summary():
     for assembly_accession in listed_file:
         #print(assembly_accession)
         matching_files = glob.glob(f'{args.path_to_ref_db}/{assembly_accession}/*_assembly_report.txt')
-        #print(matching_files)
-        if "GCA" not in assembly_accession:
+        #print(f'{assembly_accession}, {matching_files}, "\n_________\n"')
+        if "GCA" not in assembly_accession or len(matching_files)==0:
             continue
         if assembly_accession not in assembly2taxa_name:
             file = open(matching_files[0],  'r')
@@ -414,9 +417,8 @@ def download_new_genomes(N_downloaded_success, N_downloaded_failed):
         
         os.makedirs(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
 
-        print(ftp_path)
-        quit()
         ftp_path = re.sub("https", "rsync", ftp_path)
+        ftp_path = re.sub('/$', '', ftp_path)
         assembly_name = re.sub('.*/', '', ftp_path)
 
         #rsync_command = ['rsync', '-a', '--no-motd', '--progress', '--exclude=*_from_genomic*', '--exclude=*_cds_*', '--exclude=*_rna_*', '--include=*_genomic.fna.gz', '--include=*assembly_report.txt', '--include=*_fcs_report.txt', '--exclude=*', ftp_path, f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
@@ -458,10 +460,10 @@ def update_genomes(N_genomes_updated, N_downloaded_failed):
         ftp_path = re.sub("https", "rsync", ftp_path)
         ftp_path = re.sub('/$', '', ftp_path)
         assembly_name = re.sub('.*/', '', ftp_path)
-        print(f'{ftp_path}/{assembly_name}_genomic.fna.gz')
-        print(assembly_name)
-        print(ftp_path)
-        quit()
+        #print(f'{ftp_path}/{assembly_name}_genomic.fna.gz')
+        #print(assembly_name)
+        #print(ftp_path)
+        #quit()
         #rsync_command = ['rsync', '-a', '--no-motd', '--progress', '--include=*fna.gz', '--include=*assembly_report.txt', '--exclude=*', ftp_path, assembly_accession_no_version]
         rsync_command = ['rsync', '-a', '--no-motd', '--progress', f'{ftp_path}/{assembly_name}_genomic.fna.gz', f'{ftp_path}/{assembly_name}_fcs_report.txt', f'{ftp_path}/{assembly_name}_assembly_report.txt', f"{args.path_to_ref_db}/{assembly_accession_no_version}"]
         
@@ -563,12 +565,28 @@ def remove_assemblies():
     for assembly in assemblies_to_remove:
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d")
-        assembly_accession_no_version, taxid, assembly_accession, assembly_level, seq_rel_date, ftp_path = taxonomy_dict[assembly]
+        try :
+            assembly_accession_no_version, taxid, assembly_accession, assembly_level, seq_rel_date, ftp_path = taxonomy_dict[assembly]
+        except:
+            file = open(glob.glob(f'{args.path_to_ref_db}/{assembly}/*_assembly_report.txt')[0])
+            for row in file:
+                if 'GenBank assembly accession:' in row:
+                    assembly_accession = re.sub(': .*', '',row.strip())
+                if 'Taxid:' in row:
+                    taxid = re.sub(': .*', '',row.strip())
+                if 'Assembly level:' in row:
+                    assembly_level = re.sub(': .*', '',row.strip())
+                if  'Date:' in  row:
+                    seq_rel_date = re.sub(': .*', '',row.strip())
+            file.close()
+        
         history_file.write('\t'.join(['removed', str(assembly_accession), str(taxid), str(formatted_datetime), str(assembly_level), str(seq_rel_date)])+'\n')
+        
+
         if os.path.isdir(assembly):
             shutil.rmtree(assembly)
             N_removed+=1
-
+    history_file.close()
     return N_removed
 
 def check_database_consistency():
@@ -787,6 +805,7 @@ def check_database_consistency():
     print(f"\tgenome suppressed: {genome_suppressed}")   
     print(f"\tasseblies without fna: {number_of_asseblies_without_fna}") 
     print(f"\tasseblies not indexed: {not_indexed}") 
+    print(f"\tasseblies with incomplete index: {index_incomplete}") 
     print('')
 
 
@@ -844,7 +863,7 @@ if __name__ == '__main__':
         quit()
 
     print("start main\n")
-    if args.check-db == True:
+    if args.check_db == True:
         check_database_consistency()
         quit()
 
@@ -859,7 +878,6 @@ if __name__ == '__main__':
     required_to_update, new_need_to_download, N_already_downloaded_before, assemblies_to_remove, taxonomy_dict = read_genbank_assembly_summary()
     
     ## Creates all log files
-    database_version = read_database_version()
     date_start_download = read_and_update_download_history()
     
     ## Download and update the genomes
@@ -870,6 +888,7 @@ if __name__ == '__main__':
     N_removed = remove_assemblies()
 
     # Write log files
+    database_version = read_database_version()
     write_db_version_summary(database_version)
     write_log_file(date_start_download, database_version)
 

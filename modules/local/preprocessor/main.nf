@@ -19,9 +19,9 @@ process PREPROCESSOR {
     script:
     """
 
-    output_file="\$(echo ${input_fastq} | sed 's/.fastq.gz/_clean.fastq.gz/')"
-    json_out="\$(echo ${name} | sed 's/.fastq/_report.json/g')"
-    log_out="\$(echo ${name} | sed 's/.fastq/_fastp.log/g')"
+    output_file="\$(echo ${input_fastq} | sed 's/\\.\\(fastq\\|fq\\).gz/_clean.fastq.gz/')"
+    json_out="\$(echo ${name} | sed 's/\\.\\(fastq\\|fq\\)/_report.json/g')"
+    log_out="\$(echo ${name} | sed 's/\\.\\(fastq\\|fq\\)/_fastp.log/g')"
 
     fastp -i ${input_fastq} -o \${output_file} --dedup --low_complexity_filter --complexity_threshold 50 --overrepresentation_analysis --length_required ${params.min_read_length} -w 4 -h report.html -j \${json_out} 2> \${log_out} 
     

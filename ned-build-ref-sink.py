@@ -8,8 +8,8 @@ import glob
 
 parser = argparse.ArgumentParser(prog='Sink index', description='')
 parser.add_argument('--path_to_ref', "-p", help='path to the reference directory [input is directory]', default='.')
-
 parser.add_argument('--version',  help='print version',action='store_true', default=False)
+
 args=parser.parse_args()
 
 version="Bacterial sink: version - v1.0 25 March-2025"
@@ -29,7 +29,7 @@ else:
 
 
 def check_database_version():
-	db_version_summaries = os.listdir(args.path_to_ref+'/database_version_summary/')
+	db_version_summaries = os.listdir(f'{args.path_to_ref}/database_version_summary/')
 	database_version = re.sub('summary_version_|.tsv','' ,db_version_summaries[-1])
 	try:
 		last_version = open('sink_version', 'r')
@@ -40,10 +40,10 @@ def check_database_version():
 		pass
 
 def read_database_summary():
-	db_version_summaries = os.listdir(args.path_to_ref+'/database_version_summary/')
+	db_version_summaries = os.listdir(f'{args.path_to_ref}/database_version_summary/')
 	database_version = re.sub('summary_version_|.tsv','' ,db_version_summaries[-1])
 	print(f"database version: {database_version}")
-	file = open(args.path_to_ref+'/database_version_summary/'+db_version_summaries[-1])
+	file = open(f'{args.path_to_ref}/database_version_summary/{db_version_summaries[-1]}')
 	
 	phylum_dict = {}
 
@@ -61,8 +61,8 @@ def read_database_summary():
 		
 
 def index_bacteria_sinks(phylum_dict):
-	if not os.path.isdir('sink_phylum_indexes'):
-		os.makedirs('sink_phylum_indexes')
+	if not os.path.isdir(f'{args.path_to_ref}/sink_phylum_indexes'):
+		os.makedirs(f'{args.path_to_ref}/sink_phylum_indexes')
 
 	# cat'ing fasta files	
 	for phylum in phylum_dict:
@@ -74,9 +74,9 @@ def index_bacteria_sinks(phylum_dict):
 
 		print(f"writing {phylum}")
 
-		if not os.path.isdir(f"sink_phylum_indexes/{phylum}_sink"):
-			os.makedirs(f"sink_phylum_indexes/{phylum}_sink")
-		subprocess.run(['cat'] + phylum_dict[phylum], stdout=open(f"sink_phylum_indexes/{phylum}_sink/{phylum}_{sink_group}.fna.gz", 'w'))
+		if not os.path.isdir(f"{args.path_to_ref}/sink_phylum_indexes/{phylum}_sink"):
+			os.makedirs(f"{args.path_to_ref}/sink_phylum_indexes/{phylum}_sink")
+		subprocess.run(['cat'] + phylum_dict[phylum], stdout=open(f"{args.path_to_ref}/sink_phylum_indexes/{phylum}_sink/{phylum}_{sink_group}.fna.gz", 'w'))
 
 if __name__ == '__main__':
     if args.version == True :

@@ -11,9 +11,10 @@ include { bowtie2_mapperB                      } from './workflows/005B_bowtie2_
 include { make_log                             } from './workflows/006_make_log.nf'
 include { bowtie2_indexer                      } from './workflows/01_bowtie2_index.nf'
 include { bowtie2_indexer_sink                 } from './workflows/02_bowtie2_index_sink.nf'
+include { add_id2fastq                         } from './workflows/001B_fastq2id.nf'
 
 // BIG THING TO SOLVE - updated genomes are not deleted and remapped.
-
+    // solved, the bam file is replaced if the index data was after the formation of the bamfile in the bams/ directory
 //The colors
 red = "\033[0;31m"
 white = "\033[0m"
@@ -36,21 +37,25 @@ def exit_missing_required(flag){
 }
 
 // --build this makes the bowtie2 index for reference genomes/ 
+
+workflow{
+
 if (params.build){
     input_dirs = Channel.fromPath(params.path_reference_dbs, type: 'dir')    
 
     // Bowtie2 index the reference genomes that need to be indexed, and than move them from the Work dir to the dir it supposed to be.
     if (params.refgenomes){
-    bowtie2_indexer(input_dirs)
+        bowtie2_indexer(input_dirs)
     }
 
     if (params.sink){
-    bowtie2_indexer_sink(input_dirs)
+        bowtie2_indexer_sink(input_dirs)
     } 
-}
+    }
+
 
 // --preprocessing, does the library triming, identical PCR duplicate removal, and quality filtering
-workflow {
+
 if (params.preprocessing) {
     // reading in bams as a channel
     if (params.bams || params.bams_tsv) {
@@ -77,11 +82,25 @@ if (params.preprocessing) {
         fastq = bam2fastq.out.fastq
     }
     
-    println(params.input_fastq)
     if (params.input_fastq) {
-    fastq = Channel.fromPath(params.input_fastq)
+        fastq = Channel.fromPath(params.input_fastq)
+       }
+    
+    if (params.input_fastq_tsv){
+        input = Channel
+            .fromPath(params.input_fastq_tsv)
+            .splitCsv(header: true, sep: '\t')
+            .map { row -> 
+                def lib = row['lib_name']
+                def file_path = file(row['file_path'])
+                return [lib, file_path]
+        }
+        add_id2fastq(input)
+        input.view()
+        fastq = add_id2fastq.out.id2fastq
+        fastq.view()
     }
-
+    
     // preprocessing fastp - remove low complexity (repetitive nucleotides) and low quality reads + dedup
     preprocessing(fastq)
     fastp_fastq = preprocessing.out.fastp_fastq

@@ -1,39 +1,66 @@
 process BOWTIE2_MAPPER {
 
-    errorStrategy 'retry'
+    input:
+        tuple path(input_fastqs), path(input_dirs), val(assembly_number)
+
     maxForks params.maxForks_cluster
-    executor 'sge'
-    penv 'smp'
-    maxRetries 2
-    //clusterOptions = '-l h=!hpc101.eva.mpg.de'
-    //cpus "${ task.Attempt == 1 : 8}"
-    errorStrategy { task.attempt < 2 ? 'retry' : 'ignore' }
-    cpus { task.attempt == 1 ? params.threads : params.threads+32 }
-
-    //cpus "${params.threads}"
-
-    //memory '16 GB'
-    //clusterOptions '-l class=*'
     
-    //maxRetries 1
+    cpus params.threads
+    executor params.executor
+    penv { params.executor == 'sge' ? 'smp' : null }
 
-    //container "${ workflow.containerEngine == 'singularity'
-    //    'https://depot.galaxyproject.org/singularity/bowtie2:2.5.3--py38he00c5e5_0'}"
+    memory {
+    def fnaFile = ["plant", "invertebrate", "vertebrate_mammalian", "vertebrate_other", "bacteria", "archaea", "bacteria/bact_sink"]
+        .collect { category -> file("${params.path_reference_dbs}/${category}/${input_dirs}") }
+        .findResult { dir ->
+            dir.exists() ? dir.listFiles()?.find { it.name.endsWith('.fna.gz') } : null
+        }
+
+    if (!fnaFile) {
+        throw new RuntimeException("No .fna.gz file found in any category under ${input_dirs}")
+    }
+
+    def sizeGB = fnaFile.size() / 1e9
+    def maxMemGB = params.memory_max?.replaceAll(/[^\d]/, '')?.toInteger() ?: 128
+    def estimatedMem = Math.max(8, Math.min((double)(sizeGB * 5), (double)maxMemGB)).round(0)
+
+    return params.executor == 'slurm'
+        ? (params.memory ?: "${estimatedMem} GB")
+        : null
+    } 
+
+    time {
+    def fnaFile = ["plant", "invertebrate", "vertebrate_mammalian", "vertebrate_other", "bacteria", "archaea", "bacteria/bact_sink"]
+        .collect { category -> file("${params.path_reference_dbs}/${category}/${input_dirs}") }
+        .findResult { dir ->
+            dir.exists() ? dir.listFiles()?.find { it.name.endsWith('.fna.gz') } : null
+        }
+
+    if (!fnaFile) {
+        throw new RuntimeException("No .fna.gz file found in any category under ${input_dirs}")
+    }
+
+    def sizeGB = fnaFile.size() / 1e9
+    def maxTimeH = params.time_max?.replaceAll(/[^\d]/, '')?.toInteger() ?: 24
+    def estimatedTime = Math.max(3, Math.min((double)(sizeGB * 0.5), (double)maxTimeH)).round(0)
+
+    return params.executor == 'slurm'
+        ? (params.time ?: "${estimatedTime}h")
+        : null
+    }
+
+    errorStrategy { 'ignore' }
 
     container "${ workflow.containerEngine == 'singularity'
         'https://depot.galaxyproject.org/singularity/mulled-v2-c742dccc9d8fabfcff2af0d8d6799dbc711366cf:2c4c4e771c5f7d6e311c74234a98ccf71669d6fb-0'}"
-
-    input:
-        tuple path(input_fastqs), path(input_dirs), val(assembly_number)
-    
     
     publishDir "${params.out_dir}/logs/", mode: 'move', overwrite: true, pattern: '*.log'
     publishDir "${params.out_dir}/bams/", mode: 'move', overwrite: true, pattern: '*.bam'
 
     output:
-    path("*.bam")                           , emit: mapped_bam
-    path("*.log")                           , emit: mapped_log
-    val(assembly_number)                    , emit: assembly_ids
+        path("*.bam")                           , emit: mapped_bam
+        path("*.log")                           , emit: mapped_log
+        val(assembly_number)                    , emit: assembly_ids
 
     when:
         def hasBt2Files = ["plant", "invertebrate", "vertebrate_mammalian", "vertebrate_other", "bacteria", "archaea", "bacteria/bact_sink"].any { category ->

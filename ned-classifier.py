@@ -241,14 +241,15 @@ def read_bam_file(bams, for_what):
             if "I" in read.cigarstring or "D" in read.cigarstring:
                 continue
             
-            # this removes Ns that where in the reference 
+            # this removes reads that map to Ns in the reference sequence
             # its a harsh filter maybe since this would kick out reads for one taxa but keep it for another
-            if [ Nuc for Nuc in re.sub('[0-9]{1,}', '', read.get_tag('MD')) if Nuc not in ['A', 'T', 'G', 'C']]:
+            if [ Nuc for Nuc in re.sub('[0-9]{1,}', '', read.get_tag('MD')) if Nuc.upper() not in ['A', 'T', 'G', 'C']]:
                 continue
             
-            # this removes Ns in the read
+            # this removes reads with Ns in the sequence
             if any(base not in NUCL for base in read.query_sequence.upper()):
                 continue
+
             library = re.sub('.*:', '', read.query_name)
             if library not in total_readcount_dict[assembly]:
                 total_readcount_dict[assembly][library] = 0

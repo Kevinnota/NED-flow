@@ -30,7 +30,7 @@ NED-flow comes with a reference database manager to make it easier to organise r
 ### Getting started downloading sequences
 The reference genomes/assemblies are optained from the genbank ftp server `ftp.ncbi.nlm.nih.gov/genomes/genbank/`. The `assembly_summary.txt` is downloaded and queried for the availible genomes, their status, and taxonomic information. Genbank genomes are divided into taxonomic groups, and NED-flow retains these. So the databases are split into:
 
-*Databases intended to be used with NED-flow for taxonomy*
+*Databases intended to be used with NED-flow for taxonomy classification*
 - plant
 - vertebrate_mammalian
 - vertebrate_other
@@ -61,21 +61,37 @@ The database structure is as follows:
 ```
 plant/
 	-> GCA_xxxxxxxxx/
-		-> [GCA_xxxxxxxxx]_assembly_report.txt
-		-> [GCA_xxxxxxxxx]_fcs_report.txt
+		-> [GCA_xxxxxxxxx.x]_[asm_name]_assembly_report.txt
+		-> [GCA_xxxxxxxxx.x]_[asm_name]_fcs_report.txt
+		-> [GCA_xxxxxxxxx.x]_[asm_name]_genomic.fna.gz
 		-> [GCA_xxxxxxxxx]_download.log
 	   
 ```
 There is one directory for each assembly. Its will contain a `assembly_report.txt` that NED-flow uses for taxonomic information, and a `_fcs_report.txt` file that contains Foreign Contamination Screening information. This file will be used to mask reagions in the assembly that will not be used for taxonomic assignment.
 
-If you want to download only a subsection of taxa, it is possible to give ned-ref-manager.py a list of assembly accession numbers. It is still required to specify which database NED-flow should query against.
+If you want to download only a subsection of taxa, it is possible to give ned-ref-manager.py a list of assembly accession numbers. It is still required to specify which database NED-flow should query against [plant|vertebrate_mammalian|vertebrate_other|invertebrate].
 
 ```
 ned-ref-manager.py -db plant -al [example_files/ref_genome_list.tsv]
 ```
-This can also be done if specific assemblies should be added. By default NED-flow will only download the assembly that is indicated at reference genome. For example, for Canis lupis there is only domestic dog used as reference assembly, but with this funtion it is possible to add wolf to the reference database. 
+This can also be done if specific assemblies should be added. By default NED-flow will only download the assembly that is indicated as reference genome. For example, for Canis lupis there is only domestic dog used as reference assembly, but with this funtion it is possible to add wolf to the reference database. 
 
-It is also possible to specify the path to the where the reference database with the `-p` flag.
+It is also possible to specify the path to the where the reference database is/should be created with the `-p` flag.
+
+## check the database 
+
+During the downloading or indexing process, its possible that errors have occurred. Running `ned-ref-manager.py` with the `--check-db` flag will not update the database, but will check if there are mistakes in the database. It will check for
+> - if there is one fasta file in the directory. 
+> - if there are FCS reports missing. If they are missing, it will try to download them
+> - if the FTP path of an assembly has changed, the normal updater will fix this.
+> - if genomes are no longer available on NCBI
+> - if the assembly is indexed
+
+It will print some stats and end with a list of advice for further actions to take. 
+
+```
+ned-ref-manager.py --check-db
+```
 
 ```
 usage: ned-ref-manager.py [-h] [--database DATABASE] [--path_to_ref_db PATH_TO_REF_DB] [--assembly_list ASSEMBLY_LIST] [--version]
@@ -90,37 +106,47 @@ options:
                         path to the reference directory, default is the curent working directory
   --assembly_list ASSEMBLY_LIST, -al ASSEMBLY_LIST
                         list of assemblies to download
+  --check-db CHECK_DB   tool to check the status of the database
   --version             print version
 
 ```
 
 ### Indexing reference asseblies.
 
-Indexing reference asseblies is a taks that will require quite some resorces the first time. This part is done in Nextflow and is part of the main `ned.nf`. For indexing the reference assemblies run:
+Indexing reference assemblies is a task that will require quite some resources, especially the first time. This part is done in Nextflow and is part of the main `ned.nf` program. It will automatically locate assemblies that are not indexed and skip those. Therefore there is no need to specify which genome needs to be indexed but can add a wildcard. For indexing the reference assemblies, run:
 
 ```
-ned.nf --build --refgenomes --path_reference_dbs /path/to/ref_db/
+ned.nf --build --refgenomes --executor [local/slurm/sge] --path_reference_dbs '/path/to/ref_db/GCA*'
 ```
 
-```
-ned-ref-manager.py -db [plant/vertebrate_mammalian/vertebrate_other/invertebrate]
-```
+Indexing on a cluster (slurm) is hard since you need to request a running time and memory. Small genomes require very little time and RAM to run, while large genomes take more resources. There is a risk in requesting too many resources that the queuing goes very slowly, and computing allocations are used up rapidly. On the other hand, requiring too few resources will result in a lot of errors with incomplete indexing attempts. With --executor sge, there is no need to specify RAM or runtime, but for SLURM, there is. So for slurm, memory and time are estimated by the input size of the FNA file. This is an estimation, so it might sometimes fail. There is also a default range between 8-128 GB of RAM and 3-24 hours in time. If an index requires more, then modify this manually or increase the max by requesting more resources by default. This can be done with the --memory/--memory-max and --time/--time-max flags. If failing persists, use `ned-ref-manager --check-db` to see which genomes failed to index.
 
-### ned-ref-manager.py
-```
-~/NED-flow/ned-ref-manager.py -db plant
-```
 
 ### make-ref-sink.py 
 
-### ned.nf --build
+Microbial, fungal or archeal DNA can often occur as a contaminant in reference genomes. There is an option ot make 'sinks' that download genomes and concatenate these to make sinks that reads can map against. This is a competitive mapping approach in the sense that a read maps to a sink; it will not be considered by `ned-classify.py` for taxonomic classification. Making the sinks is easy and can be done with `ned-build-ref-sink.py`. A sink can only be made for fungi, bacteria, archaea. 
 
-## preproccessing and mapping
+```
+ned-build-ref-sink.py -p [path/to/ref/db]
+```
+
+Indexing the sink can be done with `ned.nf --build` using the `--sink` flag
+
+```
+ned.nf --build --build --sink --executor [local/slurm/sge] --path_reference_dbs '/path/[bacteria/fingi/archaea]/*_sink'
+```
+
+## running NED-flow
+
+The idea of NED-flow is that all reads are mapped indipendent to each reference genomes/assemblies in the database. This will create one bam file per mapping. To reduce the number of files, all reads are concatinated into one fastq file before mapping. This is all done automatically, but NED-flow does require the reads to have the library_id, or some kind of identifier at the end of the read header. This is used by downstream classifier for corretly assigning a read to a sample. This is also automatically done, but requires an input file with fastq_name and library identifier. 
 
 
-### ned.nf --preproccessing
+### preproccessing and mapping
 
-### ned.nf --mapping
+
+#### ned.nf --preproccessing
+
+#### ned.nf --mapping
 
 ## Taxonomic classifying
 ### ned-classifier.py

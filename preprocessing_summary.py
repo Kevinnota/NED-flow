@@ -48,9 +48,9 @@ def read_fastp_json_fils():
 					'low_dust_score'] 
 	print('\t'.join(header))
 	for log in args.fastp_json:
-
-		libary_name = re.sub('.*/|s_._|_S.*', '', re.sub('_report.json', '', log))
-		
+		#print(log)
+		#libary_name = re.sub('.*/|s_._|_S.*', '', re.sub('_report.json', '', log))
+		libary_name = re.sub('.*/|s_._', '', re.sub('_report.json', '', log))
 		try:
 			dust_removed=lib2dust_removed_dict[libary_name]
 		except:
