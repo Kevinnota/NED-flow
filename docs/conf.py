@@ -5,7 +5,7 @@ import sys
 import re
 sys.path.insert(0, os.path.abspath('..'))
 
-html_theme = "furo"
+import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
@@ -20,6 +20,10 @@ language = 'en'
 
 templates_path = ['_templates']
 exclude_patterns = []
+
+extensions = [
+    'sphinx_rtd_theme',
+]
 
 html_theme = 'sphinx_rtd_theme'
 
