@@ -20,6 +20,10 @@ templates_path = ['_templates']
 exclude_patterns = []
 #exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+html_css_files = [
+    'custom.css',
+]
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-out
 
@@ -30,5 +34,12 @@ extensions = ["sphinx.ext.autodoc"]
 html_static_path = ['_static']
 
 html_theme_options = {
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "navbar_start": ["navbar-logo"],
+    "navbar_end": ["navbar-icon-links"],
+    "navbar_persistent": ["search-button"],
+    "logo": {
+        "text": "My Project",
+    },
+    "use_edit_page_button": False,
+    "github_url": "https://github.com/yourname/yourrepo",  # optional
 }
