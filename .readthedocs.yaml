@@ -12,7 +12,7 @@ build:
 
 python:
   install:
-  requirements: docs/requirements.txt
+   - requirements: docs/requirements.txt
 
 version: 2
 sphinx:
