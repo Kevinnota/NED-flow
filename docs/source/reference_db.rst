@@ -1,3 +1,5 @@
+.. _reference_db-page:
+
 Reference Database Manager
 ==========================
 
