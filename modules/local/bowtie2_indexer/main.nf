@@ -18,7 +18,7 @@ process BOWTIE2_INDEXER {
 
         def sizeGB = fnaFile.size() / 1e9
         def maxMemGB = params.memory_max?.replaceAll(/[^\d]/, '')?.toInteger() ?: 128
-        def estimatedMem = Math.max(8, Math.min((double)(sizeGB * 12), (double)maxMemGB)).round(0)
+        def estimatedMem = Math.max(8, Math.min((double)(sizeGB * 15), (double)maxMemGB)).round(0)
         
         return params.executor == 'slurm'
             ? (params.memory ?: "${estimatedMem} GB")
