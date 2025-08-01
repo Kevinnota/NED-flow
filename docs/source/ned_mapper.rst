@@ -28,10 +28,10 @@ bam input (for MPI-eva internal usage):
 .. code-block:: bash
 	ned.nf --preproccessing --path_reference_dbs '/path/to/ref_db/GCA*' --bams_tsv [path/to/tsv/file]
 
-the tsv file for internal usage had to contain ``lib_id``, ``lane`` and ``run_id`` in the header. The lib_id can not be changed but has to correspont to the RG. So the indexed libary id from coreDB. The libary can be either Lib.X.XXXX or Lib_X_XXXX. 
+the tsv file for internal usage had to contain ``lib_id``, ``lane`` and ``run_id`` in the header. The lib_id can not be changed but has to correspond to the RG. So the indexed library ID from coreDB. The library can be either Lib.X.XXXX or Lib_X_XXXX. 
  
 .. note::
-	the bam files require a RG flag - this is already in there for bams processed for th genetics department.
+	The bam files require an RG flag - this is already in there for BAMs processed for the genetics department.
 
 mapping
 -----------------

@@ -29,10 +29,10 @@ Indexing the sink can be done with `ned.nf --build` using the `--sink` flag
 
 Command-Line Usage
 ------------------
+
 Here are all the options for ``ned.nf --build``
 
 .. code-block:: none
-
    usage: nextflow ned.nf --build [options]
 
    Downloads and manages reference genomes for NED-flow

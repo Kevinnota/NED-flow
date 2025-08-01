@@ -111,6 +111,7 @@ Command-Line Usage
 ------------------
 
 Here are all the options for ``ned-ref_manager.py``
+
 .. code-block:: none
 
    usage: ned-ref-manager.py [-h] [--database DATABASE]
