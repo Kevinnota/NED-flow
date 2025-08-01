@@ -69,7 +69,7 @@ if (params.preprocessing) {
             .fromPath(params.bams_tsv)
             .splitCsv(header: true, sep: '\t')
             .map { row -> 
-                def lib = row['lib'].replace('.', '_')
+                def lib = row['lib_id'].replace('.', '_')
                 def lane = row['lane']
                 def run_id = row['run_id']
                 file("/mnt/ngs_data/${run_id}/results/final/s_${lane}_${lib}*.bam")
@@ -96,9 +96,7 @@ if (params.preprocessing) {
                 return [lib, file_path]
         }
         add_id2fastq(input)
-        input.view()
         fastq = add_id2fastq.out.id2fastq
-        fastq.view()
     }
     
     // preprocessing fastp - remove low complexity (repetitive nucleotides) and low quality reads + dedup
@@ -114,7 +112,7 @@ if (params.preprocessing) {
 if (params.mapping) {
     
     // merging fastq files
-    input_fastqs = Channel.fromPath(params.fastq_file, type: 'dir')
+    input_fastqs = Channel.fromPath(params.fastq_files, type: 'dir')
     mergerA(input_fastqs)
     merged_fastq = mergerA.out.merged_fastq
 
@@ -147,6 +145,14 @@ if (params.mapping) {
             vertebrate_other = true
         }
 
+        if (params.sinks) {
+            //input = Channel.fromPath("${params.path_reference_dbs}/*/GCA_*", type: 'dir')
+            //  .filter { !['bacteria', 'archaea', 'fungi'].contains(it.getParent().getName()) }
+            //input_dirs = input_dirs.concat(input)
+            bact_sink = true
+            fungi_sink = true
+            archaea_sink = true
+        }
 
         if ( params.plant || plant ){
             input = Channel.fromPath("${params.path_reference_dbs}/plant/GCA_*", type: 'dir')
@@ -168,10 +174,20 @@ if (params.mapping) {
             input = Channel.fromPath("${params.path_reference_dbs}/bacteria/GCA_*", type: 'dir')
             input_dirs = input_dirs.concat(input)
         }
-	if (params.bact_sink){
+	if (params.bact_sink || bact_sink){
             input = Channel.fromPath("${params.path_reference_dbs}/bacteria/bact_sink/*concat", type: 'dir')
             input_dirs = input_dirs.concat(input)
         }
+
+    if (params.fungi_sink || fungi_sink){
+            input = Channel.fromPath("${params.path_reference_dbs}/fungi/fungi_sink/*concat", type: 'dir')
+            input_dirs = input_dirs.concat(input)
+        }
+    if (params.archaea_sink || archaea_sink){
+            input = Channel.fromPath("${params.path_reference_dbs}/archea/archaea_sink/*concat", type: 'dir')
+            input_dirs = input_dirs.concat(input)
+        }
+
 
     input_index_assembly = input_dirs.map{
             [it, it.baseName]

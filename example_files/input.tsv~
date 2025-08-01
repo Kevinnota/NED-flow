@@ -1,0 +1,4 @@
+lib_name	file_path
+lala	input_fastq/CLG001.fastq.gz
+Nopr	input_fastq/CLG002.fastq.gz
+QIC004	input_fastq/QIC004.fastq.gz

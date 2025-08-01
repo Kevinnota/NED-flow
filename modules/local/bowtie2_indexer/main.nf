@@ -18,7 +18,7 @@ process BOWTIE2_INDEXER {
 
         def sizeGB = fnaFile.size() / 1e9
         def maxMemGB = params.memory_max?.replaceAll(/[^\d]/, '')?.toInteger() ?: 128
-        def estimatedMem = Math.max(8, Math.min((double)(sizeGB * 15), (double)maxMemGB)).round(0)
+        def estimatedMem = Math.max(8, Math.min((double)(sizeGB * 20), (double)maxMemGB)).round(0)
         
         return params.executor == 'slurm'
             ? (params.memory ?: "${estimatedMem} GB")
@@ -33,7 +33,7 @@ process BOWTIE2_INDEXER {
 
     def sizeGB = fnaFile.size() / 1e9
     def maxTimeH = params.time_max?.replaceAll(/[^\d]/, '')?.toInteger() ?: 24
-    def estimatedTime = Math.max(3, Math.min((double)(sizeGB * 0.5), (double)maxTimeH)).round(0)
+    def estimatedTime = Math.max(3, Math.min((double)(sizeGB * 3), (double)maxTimeH)).round(0)
 
     return params.executor == 'slurm'
         ? (params.time ?: "${estimatedTime}h")

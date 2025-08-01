@@ -1,0 +1,4 @@
+lib_name	file_path
+sample_1	/path/to/sample_1.fastq.gz
+lib_S_10	input_fastq/sample.fastq.gz
+AA_XX.1		input_fastq/file_name.fastq.gz

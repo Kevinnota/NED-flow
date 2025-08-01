@@ -8,14 +8,14 @@ NED-flow comes with a reference database manager to make it easier to organise r
 - ``ned-ref-manager.py`` — used to download and update the reference database, and to create "sinks" for co-mapping to bacteria.
 - Nextflow module ``ned.nf --build`` — used for indexing the database.
 
-Getting Started: Downloading Sequences
---------------------------------------
+Getting Started: Downloading reference genomes/throngs.
+======================================
 
 The reference genomes/assemblies are obtained from the GenBank FTP server:
-ftp.ncbi.nlm.nih.gov/genomes/genbank/
+``ftp.ncbi.nlm.nih.gov/genomes/genbank/``
 
 
-The file ``assembly_summary.txt`` is downloaded and queried to list available genomes, their status, and taxonomic information. GenBank divides genomes by taxonomic groups, and NED-flow preserves this structure. The databases are split into:
+The file ``assembly_summary.txt`` is downloaded and used to query the list of available genomes, their status, and taxonomic information. GenBank divides genomes by taxonomic groups, and NED-flow preserves this structure. The databases are split into:
 
 **Databases intended for taxonomy classification in NED-flow:**
 
@@ -24,7 +24,7 @@ The file ``assembly_summary.txt`` is downloaded and queried to list available ge
 - ``vertebrate_other``
 - ``invertebrate``
 
-**Databases intended as sinks in NED-flow (for co-mapping):**
+**Databases intended as sinks in NED-flow (for compatative-mapping):**
 
 - ``fungi``
 - ``archaea``
@@ -32,20 +32,20 @@ The file ``assembly_summary.txt`` is downloaded and queried to list available ge
 
 .. important::
 
-   ``viral`` and ``protozoa`` have not been tested with NED-flow.
+   ``viral`` and ``protozoa`` have not been tested with NED-flow for either sinks or taxonomic clasification.
 
 .. important::
 
-   While ``fungi``, ``archaea``, and ``bacteria`` can technically be used for taxonomic classification, this is **not recommended**. NED-flow is not tested or intended for classifying these groups.
+   While ``fungi``, ``archaea``, and ``bacteria`` can technically be used for taxonomic classification, this is **not recommended**. NED-flow is not tested or intended for classifying these taxonomic groups - there other dedicated tools for this.
 
-``ned-ref-manager.py``
+ned-ref-manager.py
 -----------------------
 
-To download the reference database for plants, navigate to the directory where the database should be stored and run:
+To download the reference database, navigate to the directory where the database should be stored, or specify ``--path_to_ref_db`` flag and run:
 
 .. code-block:: bash
 
-   ned-ref-manager.py -db plant
+   ned-ref-manager.py -db [plant|vertebrate_mammalian|vertebrate_other|invertebrate]
 
 This will:
 
@@ -58,6 +58,8 @@ This will:
 
 .. code-block:: none
 
+Each assembly has its own folder. The ``assembly_report.txt`` file contains taxonomic information, and the ``fcs_report.txt`` file includes Foreign Contamination Screening data, which NED-flow uses to mask regions that should be excluded from taxonomic assignment. And the ``genomic.fna.gz`` which contains their actual reference sequences.
+
    plant/
        └── GCA_xxxxxxxxx/
            ├── [GCA_xxxxxxxxx.x]_[asm_name]_assembly_report.txt
@@ -65,17 +67,16 @@ This will:
            ├── [GCA_xxxxxxxxx.x]_[asm_name]_genomic.fna.gz
            └── [GCA_xxxxxxxxx]_download.log
 
-Each assembly has its own folder. The ``assembly_report.txt`` file contains taxonomic information, and the ``fcs_report.txt`` file includes Foreign Contamination Screening data, which NED-flow uses to mask regions that should be excluded from taxonomic assignment.
 
 **Download specific assemblies:**
 
-You can download only a subset of assemblies using an accession list:
+Is is also possible to download only a subset of assemblies using an accession list:
 
 .. code-block:: bash
 
    ned-ref-manager.py -db plant -al example_files/ref_genome_list.tsv
 
-This is useful if you want to supplement the default set of reference genomes (e.g., adding wolf genomes to complement domestic dog).
+This is useful if you want to supplement the default set of reference genomes (e.g., adding a wolf genome to complement domestic dog). Or for testing for NED-flow is working. 
 
 **Specify a custom database location:**
 
@@ -88,9 +89,9 @@ Use the ``-p`` flag to define where the reference database should be stored:
 Database Checking
 -----------------
 
-If errors occurred during download or indexing, use the ``--check-db`` option. This will validate the reference database without making updates.
+Errors can occur during download or later during the indexing. Use the ``--check-db`` flag to check the status of the database. This will validate the reference database without making updates. It will remove incomplete indexes and try to download missing files. The tool will print in the terminal recommendations for what actions should be taken.
 
-It checks for:
+``--check-db`` checks for:
 
 - Presence of exactly one FASTA file per assembly directory.
 - Missing FCS reports (and attempts to download them if missing).
@@ -100,13 +101,12 @@ It checks for:
 
 .. code-block:: bash
 
-   ned-ref-manager.py --check-db
-
-It will print statistics and suggest next steps to fix problems.
+   ned-ref-manager.py --check-db --path_to_ref_db [path]
 
 Command-Line Usage
 ------------------
 
+Here are all the options for ``ned-ref_manager.py``
 .. code-block:: none
 
    usage: ned-ref-manager.py [-h] [--database DATABASE]
@@ -126,6 +126,6 @@ Command-Line Usage
                                     Path to the reference directory (default: current directory)
      --assembly_list ASSEMBLY_LIST, -al
                                     List of assemblies to download (TSV format)
-     --check-db CHECK_DB            Check integrity of the reference database
+     --check-db CHECK_DB            Check the integrity of the reference database
      --version                      Print version information
 
