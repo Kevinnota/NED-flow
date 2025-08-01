@@ -38,6 +38,10 @@ The file ``assembly_summary.txt`` is downloaded and used to query the list of av
 
    While ``fungi``, ``archaea``, and ``bacteria`` can technically be used for taxonomic classification, this is **not recommended**. NED-flow is not tested or intended for classifying these taxonomic groups - there other dedicated tools for this.
 
+.. Warning::
+   Downloading all plant, vertebrate, and invertebrate genomes available at present requires ~23T of free disk space. Before starting to download and build the database, make sure there is enough space available. 
+   for checking if NED-flow works first make a database ``--assembly_list`` flag. 
+
 Refernece database manager
 -----------------------
 
@@ -74,7 +78,7 @@ Is is also possible to download only a subset of assemblies using an accession l
 
 .. code-block:: bash
 
-   ned-ref-manager.py -db plant -al example_files/ref_genome_list.tsv
+   ned-ref-manager.py -db plant --assembly_list example_files/ref_genome_list.tsv
 
 This is useful if you want to supplement the default set of reference genomes (e.g., adding a wolf genome to complement domestic dog). Or for testing for NED-flow is working. 
 
