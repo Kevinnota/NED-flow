@@ -8,7 +8,7 @@ NED-flow comes with a reference database manager to make it easier to organise r
 - ``ned-ref-manager.py`` — used to download and update the reference database, and to create "sinks" for co-mapping to bacteria.
 - Nextflow module ``ned.nf --build`` — used for indexing the database.
 
-Getting Started: Downloading reference genomes/throngs.
+Downloading reference genomes
 ======================================
 
 The reference genomes/assemblies are obtained from the GenBank FTP server:
@@ -38,7 +38,7 @@ The file ``assembly_summary.txt`` is downloaded and used to query the list of av
 
    While ``fungi``, ``archaea``, and ``bacteria`` can technically be used for taxonomic classification, this is **not recommended**. NED-flow is not tested or intended for classifying these taxonomic groups - there other dedicated tools for this.
 
-ned-ref-manager.py
+Refernece database manager
 -----------------------
 
 To download the reference database, navigate to the directory where the database should be stored, or specify ``--path_to_ref_db`` flag and run:
@@ -118,7 +118,7 @@ Here are all the options for ``ned-ref_manager.py``
    Downloads and manages reference genomes for NED-flow
 
    options:
-     -h, --help                      Show this help message and exit
+     -h, --help                     Show this help message and exit
      --database DATABASE, -db       GenBank database [archaea, bacteria, fungi,
                                     invertebrate, vertebrate_mammalian,
                                     vertebrate_other, plant, protozoa, viral]

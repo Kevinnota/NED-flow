@@ -38,21 +38,21 @@ Here are all the options for ``ned.nf --build``
    Downloads and manages reference genomes for NED-flow
 
    build options:
-     --executor 				    local/sge/slurm
-     								This option specifies if Nextflow will execute the computation localy or on cluster sge or slurm.
-     --path_reference_dbs 			Path to the reference assemblies, use as 'path/GCA_*'					
-	 --refgenomes					Use when the genomes that need to be indexed are reference genomes
-	 --sink 						Use when the genomes that need to be indexed is a sink
+     --executor                    	local/sge/slurm
+                                    This option specifies if Nextflow will execute the computation localy or on cluster sge or slurm.
+     --path_reference_dbs           Path to the reference assemblies, use as 'path/GCA_*'					
+     --refgenomes                   Use when the genomes that need to be indexed are reference genomes
+     --sink                         Use when the genomes that need to be indexed is a sink
 	 
 	slurm options (optional):
-	 --memory                    	minimal memmory to allow for a job (default: 8 Gb )
-   	 --memory_max                	maximal memmory to allow for a job (default: 128 Gb )
-     --time                      	minimal time to allow for a job (default: 3h )
-     --time_max                  	maximal time to allow for a job (default: 24h )
+     --memory                       minimal memmory to allow for a job (default: 8 Gb )
+     --memory_max                   maximal memmory to allow for a job (default: 128 Gb )
+     --time                         minimal time to allow for a job (default: 3h )
+     --time_max                     maximal time to allow for a job (default: 24h )
 
     standard options (optional):
-	 --threads                      The number of cores (default = 8)
+     --threads                      The number of cores (default = 8)
      --maxForks                     Number of parallel jobs than can be run locally (default: 5)
-     								Keep in mind that every job will take --threads. so by default it will use 5 x 8 = 40 cores 
-     --maxForks_cluster          	Number of parallel jobs run on a cluster (default: 10).
-     								Keep in mind that every job will take --threads. so by default it will use 10 x 8 = 80 cores 
+                                    Keep in mind that every job will take --threads. so by default it will use 5 x 8 = 40 cores 
+     --maxForks_cluster             Number of parallel jobs run on a cluster (default: 10).
+                                    Keep in mind that every job will take --threads. so by default it will use 10 x 8 = 80 cores 
