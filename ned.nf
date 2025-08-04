@@ -125,7 +125,8 @@ if (params.mapping) {
         invertebrate = false
         vertebrate_mammalian = false
         vertebrate_other = false
-
+        fungi_sink = false
+        archaea_sink = false
 
         if (params.all) {
             //input = Channel.fromPath("${params.path_reference_dbs}/*/GCA_*", type: 'dir')
