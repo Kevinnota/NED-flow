@@ -27,32 +27,39 @@ Clone git repository
    cd NED-flow
 
 Install Python dependencies:
+
 .. code-block:: bash
    pip install -r ned-py-install.txt
 
 Download reference database:
+
 .. code-block:: bash
    ned-ref-manager.py -db [plant|vertebrate_mammalian|vertebrate_other|invertebrate]
 
 Index reference database:
+
 .. code-block:: bash
    ned.nf --build --refgenomes --executor [local/slurm/sge] --path_reference_dbs '/path/to/ref_db/GCA*'
 
 Download + index sink (obtional):
+
 .. code-block:: bash
    ned-ref-manager.py -db [bacteria|fungi|archaea]
    ned-build-ref-sink.py --path_reference_dbs [path/to/ref/db]
    ned.nf --build --sink --executor [local/slurm/sge] --path_reference_dbs '/path/[bacteria/fingi/archaea]/*_sink'
 
 Preprocessing reads:
+
 .. code-block:: bash
    ned.nf --preproccessing --path_reference_dbs '/path/to/ref_db/GCA*' --input_fastq_tsv [path/to/fastq/file]
 
 Mapping reads:
+
 .. code-block:: bash
    ned.nf --mapping --maxForks_cluster 100 --all [--sinks] --fastq_files  
 
 Classify reads:
+
 .. code-block:: bash
    ned-classifier.py -b /path/to/bams -t [n_threads] --library_type [ss,SS,ds,DS] --path_to_references [path/to/reference/database] -o [output.tsv]
 
