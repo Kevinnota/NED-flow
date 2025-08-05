@@ -8,7 +8,7 @@ NED-flow's documentation
 
 NED-flow is a NextFlow pipeline for analysing Nuclear (ancient) environmental DNA. 
 
-Whith NED-flow it is easy to:
+With NED-flow it is easy to:
 
 - download, update, and manage reference database with ``ned-ref-manager.py`` and ``ned.nf --build`` 
 - map reads to each reference assembly independently with ``ned.nf --mapping``
@@ -18,10 +18,12 @@ Whith NED-flow it is easy to:
 
 Quickstart
 ------------------------------------
+
 Install ned-flow
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 With these two commands:
-Clone git repository
+Clone the git repository
 
 .. code-block:: bash
 
@@ -33,6 +35,10 @@ Install Python dependencies:
 .. code-block:: bash
 
    pip install -r ned-py-install.txt
+
+
+Reference database setup
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Download reference database:
 
@@ -46,7 +52,7 @@ Index reference database:
 
    ned.nf --build --refgenomes --executor [local/slurm/sge] --path_reference_dbs '/path/to/ref_db/GCA*'
 
-Download + index sink (obtional):
+Download + index sink (optional):
 
 .. code-block:: bash
 
@@ -54,6 +60,8 @@ Download + index sink (obtional):
    ned-build-ref-sink.py --path_reference_dbs [path/to/ref/db]
    ned.nf --build --sink --executor [local/slurm/sge] --path_reference_dbs '/path/[bacteria/fingi/archaea]/*_sink'
 
+Mapping and taxonomic classification
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Preprocessing reads:
 
 .. code-block:: bash
@@ -72,8 +80,9 @@ Classify reads:
 
    ned-classifier.py -b /path/to/bams -t [n_threads] --library_type [ss,SS,ds,DS] --path_to_references [path/to/reference/database] -o [output.tsv]
 
+
 Detailed documentation
-------------------------------------
+====================================
 
 .. toctree::
    :maxdepth: 2
