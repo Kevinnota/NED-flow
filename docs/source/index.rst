@@ -24,7 +24,6 @@ Install ned-flow
 
 With these two commands:
 Clone the git repository
-
 .. code-block:: bash
 
    git clone https://github.com/kevinnota/NED-flow.git
