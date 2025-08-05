@@ -1,12 +1,9 @@
 .. _ned_mapper-page:
 
-NED mapping
+NED preproccessing
 ==========
 
 The NED-flow concept is based on mapping all reads independently to each reference genome/assembly in the database. This will create one BAM file per mapping. To reduce the number of files, all reads are concatenated into one fastq file before mapping. This is all done automatically, but NED-flow does require the reads to have the library_id, or some kind of identifier at the end of the read header. The downstream classifier uses this for correctly assigning reads to samples. This is also automatically done, but requires an input file with fastq_name and library_identifier. 
-
-preproccessing
------------------
 
 NED-flow expects the reads to be pre-merged and adapter-trimmed. The preprocessing is using ``fastp`` so adapters will be looked for. But because library preps can have different sequencing adapters etc., it is safer to merge and trim reads tailored to the right library prep methods.
 
@@ -32,12 +29,6 @@ the tsv file for internal usage had to contain ``lib_id``, ``lane`` and ``run_id
  
 .. note::
 	The bam files require an RG flag - this is already in there for BAMs processed for the genetics department.
-
-mapping
------------------
-
-.. code-block:: bash
-	ned.nf --mapping --maxForks_cluster 100 --all --sinks --fastq_files  
 
 
 

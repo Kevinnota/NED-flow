@@ -1,45 +1,62 @@
 .. _ned_mapper-page:
 
-NED mapping
+Taxonomic clasification
 ==========
 
-The NED-flow concept is based on mapping all reads independently to each reference genome/assembly in the database. This will create one BAM file per mapping. To reduce the number of files, all reads are concatenated into one fastq file before mapping. This is all done automatically, but NED-flow does require the reads to have the library_id, or some kind of identifier at the end of the read header. The downstream classifier uses this for correctly assigning reads to samples. This is also automatically done, but requires an input file with fastq_name and library_identifier. 
-
-preproccessing
------------------
-
-NED-flow expects the reads to be pre-merged and adapter-trimmed. The preprocessing is using ``fastp`` so adapters will be looked for. But because library preps can have different sequencing adapters etc., it is safer to merge and trim reads tailored to the right library prep methods.
-
-fastq input file:
-
 .. code-block:: bash
-	ned.nf --preproccessing --path_reference_dbs '/path/to/ref_db/GCA*' --input_fastq_tsv [path/to/fastq/file]
-
-``input_fastq_tsv`` is a tab-separated input file which requires a header with *lib_name* and a *file_path*. The file_path is either a relative path from the directory where Nextflow is run or an absolute path. In short, the path to where the input fastq files are located. The lib_name column should contain the sample identifiers. The safest names contain no special characters. Underscores (_) and hyphens (-) are allowed, colons (:) and at (@) are not. The lib_name is independent from the file name - it's simply the sample identifier.
-
-check ``input_fastq.tsv`` in the ``example_file`` directory
+	ned-classifier.py -b [path/to/mapped/bams] --path_to_references [path/to/referenge/database]
 
 
-bam input (for MPI-eva internal usage):
+Command-Line Usage
+------------------
 
-.. code-block:: bash
-	ned.nf --preproccessing --path_reference_dbs '/path/to/ref_db/GCA*' --input_fastq_tsv [path/to/tsv/file]
+.. code-block:: none
 
-.. code-block:: bash
-	ned.nf --preproccessing --path_reference_dbs '/path/to/ref_db/GCA*' --bams_tsv [path/to/tsv/file]
+    usage: Taxon classifier [options]
 
-the tsv file for internal usage had to contain ``lib_id``, ``lane`` and ``run_id`` in the header. The lib_id can not be changed but has to correspond to the RG. So the indexed library ID from coreDB. The library can be either Lib.X.XXXX or Lib_X_XXXX. 
- 
-.. note::
-	The bam files require an RG flag - this is already in there for BAMs processed for the genetics department.
-
-mapping
------------------
-
-.. code-block:: bash
-	ned.nf --mapping --maxForks_cluster 100 --all --sinks --fastq_files  
-
-
-
-
-
+    options:
+      -h, --help            show this help message and exit
+      --bam BAM [BAM ...], -b BAM [BAM ...]
+                            bam(s)
+      --library_type {SS,ss,DS,ds}, -lt {SS,ss,DS,ds}
+                            library type, single or double stranded, default SS
+      --path_to_references PATH_TO_REFERENCES, -pr PATH_TO_REFERENCES
+                            path to the references
+      --db_summary DB_SUMMARY [DB_SUMMARY ...], -db DB_SUMMARY [DB_SUMMARY ...]
+                            database summary files - manual path selection
+      --db_log DB_LOG, -dl DB_LOG
+                            database summary log file written by nf - automatically selects the correct database summary file
+      --json JSON, -j JSON  json file with RG
+      --damage DAMAGE, -d DAMAGE
+                            number of nucleotides to calculate damage on, default is first
+      --damage_threshold DAMAGE_THRESHOLD, -dt DAMAGE_THRESHOLD
+                            Damage threshold, (p5,p3) 0.05,0.05
+      --binomial_ci         number of nucleotides to calculate damage on, default is first
+      --write_taxonomy_split_bam, -ws
+                            write bam split files for genus and family if there are more than 100 reads assigned
+      --split_bam_out SPLIT_BAM_OUT, -wso SPLIT_BAM_OUT
+                            split_bam_out
+      --taxa TAXA, -tz TAXA
+                            run the classifier only on a taxonomic level, such as bovids
+      --print_r2_table, -r2
+                            write r2 table for each assembly
+      --r2_table_out R2_TABLE_OUT, -r2o R2_TABLE_OUT
+                            r2 output dir
+      --threads THREADS, -t THREADS
+                            print version
+      --exclude_assembly EXCLUDE_ASSEMBLY [EXCLUDE_ASSEMBLY ...], -e EXCLUDE_ASSEMBLY [EXCLUDE_ASSEMBLY ...]
+                            print version
+      --output OUTPUT, -o OUTPUT
+                            print version
+      --min_distance_sink MIN_DISTANCE_SINK, -mds MIN_DISTANCE_SINK
+                            maximum distance from sink, default 0.90
+      --min_distance MIN_DISTANCE, -md MIN_DISTANCE
+                            maximum distance from reference, default 0.95
+      --max_distance MAX_DISTANCE, -Md MAX_DISTANCE
+                            maximum distance from reference, default 1
+      --ignore_small_contigs IGNORE_SMALL_CONTIGS, -isc IGNORE_SMALL_CONTIGS
+                            this flag will ignore contigs equal or shorter than set value, default 0
+      --min_read_length MIN_READ_LENGTH, -ml MIN_READ_LENGTH
+                            min read_length
+      --bact_sink, -bs      Whether bact_sink needs was used to map, put False if bacteria were mapped independently (default=False).
+      --version             print version

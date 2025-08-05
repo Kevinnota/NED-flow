@@ -273,6 +273,7 @@ def read_bam_file(bams, for_what):
                     fcs_removed_reads.add(read.query_name)
                     continue
 
+            # need to change the concat file names - they should be called sinks
             if 'concat' in bam:
                 if read.reference_name in fcs_interval_tree_dict:
                     overlapping_ranges=fcs_interval_tree_dict[read.reference_name].overlap(read.reference_start, read.reference_end)
@@ -499,7 +500,6 @@ def process_bam_files(bam):
             if library not in read_count:
                 read_count[library]=0
             read_count[library]+=1
-            #contig2count[reference_name]+=1
             
             if library not in total_bases_sequenced_dict:
                 total_bases_sequenced_dict[library] = 0
@@ -576,6 +576,7 @@ def process_bam_files(bam):
             overlapping_ranges = interval_trees[reference_name][library].overlap(reference_start-1, reference_end+1)
             count = len(overlapping_ranges)-1# Subtract 1 to account for the read itself
 
+            ## this makes sure that only reads are counted that do not have increased coverage for the contig filtering
             if count <= thresholds_dict[library]:
                 try:
                     contig2count[reference_name]+=1
