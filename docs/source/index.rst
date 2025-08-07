@@ -10,10 +10,10 @@ NED-flow is a NextFlow pipeline for analysing Nuclear (ancient) environmental DN
 
 With NED-flow it is easy to:
 
-- download, update, and manage reference database with `ned-ref-manager.py` and `ned.nf --build` 
-- map reads to each reference assembly independently with `ned.nf --mapping`
-- classify reads to the lowest common ancestor (LCA) with `ned-classifier.py`, utilising data-driven quality filtering
-- check database and mappings with `ned-ref-manager.py --check-db` and `ned-check.py`
+- download, update, and manage reference database with :code:`ned-ref-manager.py` and :code:`ned.nf --build` 
+- map reads to each reference assembly independently with :code:`ned.nf --mapping`
+- classify reads to the lowest common ancestor (LCA) with :code:`ned-classifier.py`, utilising data-driven quality filtering
+- check database and mappings with :code:`ned-ref-manager.py --check-db` and :code:`ned-check.py`
 
 
 Quickstart
@@ -46,7 +46,7 @@ Reference database setup
 NED-flow uses reference genomes deposited on NCBI (https://www.ncbi.nlm.nih.gov/datasets/genome/). For NED-flow to operate, the database needs to be structured in a certain way. `ned-ref-manager.py` does this in an automated way. There are a lot of genomes available, and by default, NED-flow will download all of them. But to test if nedflow works and get it up and running, it's recommended to start with a smaller subset of genomes.
 
 NED-flow database will requite a lot of disk space - so its recommended for people that work on a cluster to downloaded it in a place that is accessable to all users. For this small download its totally alright to download it in the NED-flow directory. 
-`cd NED-flow`
+:code:`cd NED-flow`
 
 
 Download small subset of references:
