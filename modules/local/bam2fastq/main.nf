@@ -4,6 +4,8 @@ process BAM2FASTQ {
     container "${ workflow.containerEngine == 'singularity'
         'https://depot.galaxyproject.org/singularity/samtools:1.19.2--h50ea8bc_1' }"
 
+    errorStrategy { 'ignore' }
+
     input:
         tuple path(bam), val(name)
 
