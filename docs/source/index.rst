@@ -74,8 +74,7 @@ To start :code:`NED-flow` some minimal preproccessing is done for each fastq fil
 
 The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
 |:code:`ls -la filterd_fastq` 
-
-.. code-block:: none
+| .. code-block:: none
    
    total 485224
    drwxrwsr-x 2 kevin_nota genetics_g       100 Aug 15 14:10 ./
