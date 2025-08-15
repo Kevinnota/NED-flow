@@ -26,11 +26,11 @@ Install ned-flow
 
 The first step is downloading the NED-flow GitHub repository. All of the NED-flow suite is coded in :code:`Nexflow` and :code:`Python`. Only Nextflow needs to be installed, and a number of Python libraries. The two lines of code that need to be run are listed below. 
 
-| Downloading/Cloning NED-flow GitHub repository:\
+| Downloading/Cloning NED-flow GitHub repository:
 | :code:`git clone https://github.com/kevinnota/NED-flow.git`
 | :code:`cd NED-flow`
 
-| Install Python dependencies:\
+| Install Python dependencies:
 | :code:`pip install -r ned-py-install.txt`
 
 
