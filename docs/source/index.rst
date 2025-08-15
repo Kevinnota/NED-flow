@@ -69,6 +69,8 @@ To make sure that NED-flow is doing what its suppose to do this tutorial is usin
 
 To start :code:`NED-flow` some minimal preproccessing is done for each fastq file in the batch. This includes reads length filtering, removal of low quality reads, and reads with low complexity (dust). This is mainly done to speed up the mapping. It is not possible to add new sample to the batch, :code:`NED-flow` after the first mapping.   
 
+| :code:`NED-flow` NED-flow expects one fastq or unmapped bam per library. :code:`NED-flow` takes a :code:`.tsv` file with the lib_id and and file_path header. The path can be absolute or relative. An example input.tsv can be found in ~/NED-flow/example_files
+
 | Run the NED-flow preprocessing:
 | :code:`nextflow ~/NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
 
@@ -80,6 +82,11 @@ The preprocessing results in filtered_fastq directory with one file for each sam
    drwxrwsr-x 9 kevin_nota genetics_g      4096 Aug 15 14:24 ../
    -rw-rw-r-- 1 kevin_nota genetics_g  90644805 Aug 15 14:00 ERR1883475_in_clean.dust.fastq.gz
    -rw-rw-r-- 1 kevin_nota genetics_g 406210349 Aug 15 14:10 ERR1883480_in_clean.dust.fastq.gz
+
+..  important:: Do not add new samples after mapping
+   
+   NED-flow is setup to be easily updated. For making it easy it comes at the cost that no new samples can be added to the run after the first mapping has started. This is becasue NED-flow is concatinating all reads before mapping and then checking with the database if a assembly has been mapped to or not. NED-flow does not check which samples/reads have been mapped. For new samples, make a new directory. It is possible to classify reads over multuple run directories. 
+
 
 Detailed documentation
 ====================================
