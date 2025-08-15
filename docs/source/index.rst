@@ -63,15 +63,20 @@ To make sure that NED-flow is doing what its suppose to do this tutorial is usin
 | :code:`mkdir my_first_NED my_first_NED/slon_fastqs`
 | :code:`cd my_first_NED`
 
-| To download two samples run
+| To download two samples run:
 | :code:`wget -O slon_fastqs/ERR1883475.fastq.gz ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/005/ERR1883475/ERR1883475.fastq.gz`
 | :code:`wget -O slon_fastqs/ERR1883480.fastq.gz ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/000/ERR1883480/ERR1883480.fastq.gz`
 
 To start :code:`NED-flow` some minimal preproccessing is done for each fastq file in the batch. This includes reads length filtering, removal of low quality reads, and reads with low complexity (dust). This is mainly done to speed up the mapping. It is not possible to add new sample to the batch, :code:`NED-flow` after the first mapping.   
 
+| Run the NED-flow preprocessing:
 | :code:`nextflow ~/NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
-| :code:`ls -la filterd_fastq` 
-.. note::
+
+The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
+|:code:`ls -la filterd_fastq` 
+
+.. code-block:: none
+   
    total 485224
    drwxrwsr-x 2 kevin_nota genetics_g       100 Aug 15 14:10 ./
    drwxrwsr-x 9 kevin_nota genetics_g      4096 Aug 15 14:24 ../
