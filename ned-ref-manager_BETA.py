@@ -16,7 +16,7 @@ import requests
 import gzip
 
 parser = argparse.ArgumentParser(prog='ned-ref-manager.py', description='Downloads and manages reference genomes for NED-flow')
-parser.add_argument('--database', "-db", help='the genbank databases [archaea, bacteria, fungi, invertebrate, vertebrate_mammalian, vertebrate_other, plant, protozoa, viral]')
+parser.add_argument('--database', "-db", nargs='+', help='the genbank databases [all, vertebrates, archaea, bacteria, fungi, invertebrate, vertebrate_mammalian, vertebrate_other, plant, protozoa, viral]')
 parser.add_argument('--path_to_ref_db', "-p", help='path to the reference directory, default is the curent working directory', default='.')
 parser.add_argument('--assembly_list', "-al", help='list of assemblies to download')
 
@@ -48,6 +48,7 @@ ftp_server = 'ftp.ncbi.nlm.nih.gov'
 #   -> downloading specific assemblies that are not reference genomes
 #       flage - include GCA_.... (wolf, instead of only take dog)
 ############
+
 ## count how many genomes were successfully downloaded
 N_downloaded_success=0
 
@@ -66,6 +67,7 @@ def get_right_directory():
 
     if path.split('/')[-1] == args.database:
         pass
+
     elif path.split('/')[-1] != args.database: 
         args.path_to_ref_db = f'{path}/{args.database}'
 
@@ -80,15 +82,36 @@ def read_assembly_list():
     return assembly_list
 
 def get_the_assembly_summary():
-    print('Download assembly summary from NCBI - might take a few minutes')
-    ftp_path = 'rsync://ftp.ncbi.nlm.nih.gov/genomes/genbank/'+args.database+'/assembly_summary.txt'
     
-    rsync_command = ['rsync', '-a', '--no-motd', '--quiet', ftp_path, f'{args.path_to_ref_db}/{args.database}_assembly_summary.txt']
-    for attempt in range(5):
-        try:
-            subprocess.run(rsync_command, check=True, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError as e:
-                print(f"Error downloading files: {e}")
+    # makes a database list so it can download the assembly stats.
+    database_list = args.database
+    if args.assembly_list != None:
+        args.database = 'all'
+    
+    if 'all' in args.database:
+        database_list = ['invertebrate', 'vertebrate_mammalian', 'vertebrate_other', 'plant']
+    
+    elif 'vertebrates' in args.database:
+        database_list = ['vertebrate_mammalian', 'vertebrate_other']
+
+    print('Download assembly summary from NCBI - might take a few minutes')
+    try:
+        os.makedirs(f"{args.path_to_ref_db}/tmp_download")
+    except:
+        pass
+
+    for database in database_list:
+        ftp_path = 'rsync://ftp.ncbi.nlm.nih.gov/genomes/genbank/'+database+'/assembly_summary.txt'
+        
+        rsync_command = ['rsync', '-a', '--no-motd', '--quiet', ftp_path, f'{args.path_to_ref_db}/tmp_download/{database}_assembly_summary.txt']
+        
+        for attempt in range(5):
+            try:
+                subprocess.run(rsync_command, check=True, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError as e:
+                    print(f"Error downloading files: {e}")
+
+    return database_list
 
 def read_database_version():
     current_datetime = datetime.datetime.now()
@@ -162,8 +185,7 @@ def read_genbank_assembly_summary():
     required_to_update = []
     ## creates a list with genomes that are new and need to be downloaded.
     new_need_to_download = []
-    #for file in args.assembly_summary:
-    assembly_summary = open(f"{args.database}_assembly_summary.txt", 'r')
+
 
     total_number_bases_download = 0
     taxon_names_update=[]
@@ -178,152 +200,155 @@ def read_genbank_assembly_summary():
     assembly2taxa_name={}
    
     not_ref_genome = set()
-    for row in assembly_summary:
-        row_list = row.strip().split('\t')
-        if '##' in row:
-            continue
-        if '#assembly_accession':
-            i=0   
-            for item in row_list:
-                if 'assembly_accession' in item:
-                    assembly_accession_index=i
 
-                elif 'taxid' in item:
-                    taxid=i
-                elif 'refseq_category' in item:
-                    refseq_category=i
-                elif 'assembly_level' in item:
-                    assembly_level=i 
-                elif 'seq_rel_date' in item:
-                    seq_rel_date=i
-                elif 'asm_name' in item:
-                    asm_name=i
-                elif 'ftp_path' in item:
-                    ftp_path=i
-                elif 'genome_size' in item:
-                    genome_size=i
-                elif 'organism_name' in item:
-                    organism_name=i
-                elif 'excluded_from_refseq' in item:
-                    excluded_from_refseq=i
+    for database in database_list: 
+        assembly_summary = open(f"tmp_download/{database}_assembly_summary.txt", 'r')
+        for row in assembly_summary:
+            row_list = row.strip().split('\t')
+            if '##' in row:
+                continue
+            if '#assembly_accession':
+                i=0   
+                for item in row_list:
+                    if 'assembly_accession' in item:
+                        assembly_accession_index=i
 
-                i+=1
-        if args.assembly_list != None:
-            if re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]) not in assembly_list:
+                    elif 'taxid' in item:
+                        taxid=i
+                    elif 'refseq_category' in item:
+                        refseq_category=i
+                    elif 'assembly_level' in item:
+                        assembly_level=i 
+                    elif 'seq_rel_date' in item:
+                        seq_rel_date=i
+                    elif 'asm_name' in item:
+                        asm_name=i
+                    elif 'ftp_path' in item:
+                        ftp_path=i
+                    elif 'genome_size' in item:
+                        genome_size=i
+                    elif 'organism_name' in item:
+                        organism_name=i
+                    elif 'excluded_from_refseq' in item:
+                        excluded_from_refseq=i
+
+                    i+=1
+            if args.assembly_list != None:
+                if re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]) not in assembly_list:
+                    continue
+
+            #make dict with reference genomes that are representative and which are not
+            representative_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[refseq_category]
+            excluded_from_refseq_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[excluded_from_refseq]
+            
+            assembly_accession_no_version = re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index])
+            taxonomy_dict[assembly_accession_no_version] = [assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/']
+            
+            assembly2taxa_name[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[organism_name]
+            
+            ## takes only assemblies that are given in a list
+            if args.assembly_list == None:
+                if row_list[refseq_category] != 'reference genome':
+                    not_ref_genome.add(re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index]))
+                    continue
+
+            if ' x ' in row_list[organism_name]:
+                #assemblies_to_remove.append(re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]))
+                #list_taxa_to_remove.append(row_list[organism_name])
                 continue
 
-        #make dict with reference genomes that are representative and which are not
-        representative_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[refseq_category]
-        excluded_from_refseq_dict[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[excluded_from_refseq]
-        
-        assembly_accession_no_version = re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index])
-        taxonomy_dict[assembly_accession_no_version] = [assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/']
-        
-        assembly2taxa_name[re.sub('\\.[0-9].*', '', row_list[assembly_accession_index])] = row_list[organism_name]
-        
-        ## takes only assemblies that are given in a list
-        if args.assembly_list == None:
-            if row_list[refseq_category] != 'reference genome':
-                not_ref_genome.add(re.sub("\\.[1-9]*.", '', row_list[assembly_accession_index]))
+            if row_list[excluded_from_refseq] not in ['na', 'derived from single cell']:
                 continue
 
-        if ' x ' in row_list[organism_name]:
-            #assemblies_to_remove.append(re.sub('\\.[0-9].*', '', row_list[assembly_accession_index]))
-            #list_taxa_to_remove.append(row_list[organism_name])
-            continue
+            ## this makes an ftp link if the link is not given in the assembly_summary file
+            if row_list[ftp_path] == "na":
+                #print('SKIP:', row_list[assembly_accession_index], 'does not have a ftp path')
+                assembly_number_no_version=re.sub('GCA_|\\.[0-9].*', '', row_list[assembly_accession_index])
+                
+                triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
+                assembly_name = re.sub(' ', '_', row_list[asm_name])
+                ftp_path_sting=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{row_list[assembly_accession_index]}_{assembly_name}"
+                
+                
+                row_list[ftp_path]=ftp_path_sting
+                row_list[ftp_path]
+                #print(row_list)
+                #quit()
+                #continue
 
-        if row_list[excluded_from_refseq] not in ['na', 'derived from single cell']:
-            continue
+            if os.path.isdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}"):
+                files_in_dir = os.listdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
+                assebly_name=re.sub(r'\+', '', row_list[asm_name])
+                assebly_name=re.sub(' _', '_', assebly_name)
+                assebly_name=re.sub('_ ', '_', assebly_name)
+                assebly_name=re.sub(' ', '_', assebly_name)
 
-        ## this makes an ftp link if the link is not given in the assembly_summary file
-        if row_list[ftp_path] == "na":
-            #print('SKIP:', row_list[assembly_accession_index], 'does not have a ftp path')
-            assembly_number_no_version=re.sub('GCA_|\\.[0-9].*', '', row_list[assembly_accession_index])
-            
-            triplets = [assembly_number_no_version[i:i+3] for i in range(0, len(assembly_number_no_version), 3)]
-            assembly_name = re.sub(' ', '_', row_list[asm_name])
-            ftp_path_sting=f"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/{triplets[0]}/{triplets[1]}/{triplets[2]}/{row_list[assembly_accession_index]}_{assembly_name}"
-            
-            
-            row_list[ftp_path]=ftp_path_sting
-            row_list[ftp_path]
-            #print(row_list)
-            #quit()
-            #continue
-
-        if os.path.isdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}"):
-            files_in_dir = os.listdir(f"{args.path_to_ref_db}/{assembly_accession_no_version}")
-            assebly_name=re.sub(r'\+', '', row_list[asm_name])
-            assebly_name=re.sub(' _', '_', assebly_name)
-            assebly_name=re.sub('_ ', '_', assebly_name)
-            assebly_name=re.sub(' ', '_', assebly_name)
-
-            if any(filename == f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz" for filename in files_in_dir):
-            #if any(fnmatch.fnmatch(filename, row_list[assembly_accession_index] + "*fna.gz") for filename in files_in_dir):
-            #if any(row_list[assembly_accession_index] in filename for filename in files_in_dir):
-                N_already_downloaded_before+=1
+                if any(filename == f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz" for filename in files_in_dir):
+                #if any(fnmatch.fnmatch(filename, row_list[assembly_accession_index] + "*fna.gz") for filename in files_in_dir):
+                #if any(row_list[assembly_accession_index] in filename for filename in files_in_dir):
+                    N_already_downloaded_before+=1
+                else:
+                    #print('')
+                    #print(row_list[asm_name])
+                    #print(f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz")
+                    #print('')
+                    #print(files_in_dir)
+                    #print('-----------_------------_------------')
+                    required_to_update.append([assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/'])
+                    taxon_names_update.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
             else:
-                #print('')
-                #print(row_list[asm_name])
-                #print(f"{row_list[assembly_accession_index]}_{assebly_name}_genomic.fna.gz")
-                #print('')
-                #print(files_in_dir)
-                #print('-----------_------------_------------')
-                required_to_update.append([assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/'])
-                taxon_names_update.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
-        else:
-            new_need_to_download.append([assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/'])
-            total_number_bases_download+=int(row_list[genome_size])
-            taxon_names_to_download.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
+                new_need_to_download.append([assembly_accession_no_version, row_list[taxid], row_list[assembly_accession_index], row_list[assembly_level], row_list[seq_rel_date], row_list[ftp_path]+'/'])
+                total_number_bases_download+=int(row_list[genome_size])
+                taxon_names_to_download.append(f"{assembly_accession_no_version}\t{row_list[organism_name]}")
 
-    ## need to check what this does 230-271
-    try:
-        listed_file = os.listdir(args.path_to_ref_db)
-    except:
-        listed_file = []
-    
-    for assembly_accession in listed_file:
-        #print(assembly_accession)
-        matching_files = glob.glob(f'{args.path_to_ref_db}/{assembly_accession}/*_assembly_report.txt')
-        #print(f'{assembly_accession}, {matching_files}, "\n_________\n"')
-        if "GCA" not in assembly_accession or len(matching_files)==0:
-            continue
-        if assembly_accession not in assembly2taxa_name:
-            file = open(matching_files[0],  'r')
-            for row in file:
-                if "Organism name" in row:
-                    taxon_name=re.sub(".*:  | \\(.*", "", row.strip())
-                    break
-
-        ## this shows that genomes that are represed - they are no longer in the list of availible genomes 
-        if assembly_accession not in representative_dict:
-            #print(assembly_accession, taxon_name, "<---")
-            list_taxa_to_remove.append(f"{assembly_accession}\t{taxon_name}")
-            assemblies_to_remove.append(assembly_accession) 
-            continue
+        ## need to check what this does 230-271
+        try:
+            listed_file = os.listdir(args.path_to_ref_db)
+        except:
+            listed_file = []
         
-        ## this gives a list of taxa that used to be reference genome but are no longer - for these genomes there will be an 'update'
-        if representative_dict[assembly_accession] != 'reference genome':
+        for assembly_accession in listed_file:
+            #print(assembly_accession)
+            matching_files = glob.glob(f'{args.path_to_ref_db}/{assembly_accession}/*_assembly_report.txt')
+            #print(f'{assembly_accession}, {matching_files}, "\n_________\n"')
+            if "GCA" not in assembly_accession or len(matching_files)==0:
+                continue
+            if assembly_accession not in assembly2taxa_name:
+                file = open(matching_files[0],  'r')
+                for row in file:
+                    if "Organism name" in row:
+                        taxon_name=re.sub(".*:  | \\(.*", "", row.strip())
+                        break
 
-            try:
-                taxon_names_to_download.remove(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
-            except:
-                ""
-        
-            try:
-                taxon_names_to_download.remove(re.match(r"(\w+\s\w+)", f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}").group())
-            except:
-                ""
+            ## this shows that genomes that are represed - they are no longer in the list of availible genomes 
+            if assembly_accession not in representative_dict:
+                #print(assembly_accession, taxon_name, "<---")
+                list_taxa_to_remove.append(f"{assembly_accession}\t{taxon_name}")
+                assemblies_to_remove.append(assembly_accession) 
+                continue
+            
+            ## this gives a list of taxa that used to be reference genome but are no longer - for these genomes there will be an 'update'
+            if representative_dict[assembly_accession] != 'reference genome':
 
-            #print(f"{assembly_accession}, {assembly2taxa_name[assembly_accession]}")
-            list_no_longer_ref_genome.append(assembly2taxa_name[assembly_accession])
-            assemblies_to_remove.append(assembly_accession)
+                try:
+                    taxon_names_to_download.remove(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
+                except:
+                    ""
+            
+                try:
+                    taxon_names_to_download.remove(re.match(r"(\w+\s\w+)", f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}").group())
+                except:
+                    ""
+
+                #print(f"{assembly_accession}, {assembly2taxa_name[assembly_accession]}")
+                list_no_longer_ref_genome.append(assembly2taxa_name[assembly_accession])
+                assemblies_to_remove.append(assembly_accession)
 
 
-        if excluded_from_refseq_dict[assembly_accession] not in ['na', 'derived from single cell']: 
-            list_taxa_to_remove.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
-            assemblies_to_remove.append(assembly_accession) 
-
+            if excluded_from_refseq_dict[assembly_accession] not in ['na', 'derived from single cell']: 
+                list_taxa_to_remove.append(f"{assembly_accession}\t{assembly2taxa_name[assembly_accession]}")
+                assemblies_to_remove.append(assembly_accession) 
+            assembly_summary.close()
     if len(taxon_names_to_download) <= 250:
         print('')
         print(Fore.GREEN +"taxa that are new to download"+Style.RESET_ALL)
@@ -405,6 +430,7 @@ def read_genbank_assembly_summary():
     )
     
     if response not in ['y', 'Y', 'yes', 'Yes'] :
+        shutil.rmtree(f"{args.path_to_ref_db}/tmp_download")
         sys.exit(1) 
 
     return required_to_update, new_need_to_download, N_already_downloaded_before, assemblies_to_remove, taxonomy_dict
@@ -871,16 +897,17 @@ if __name__ == '__main__':
         check_database_consistency()
         quit()
 
-    get_right_directory()
+    #get_right_directory()
     if args.assembly_list != None:
-        print(f'Running contume reference assembly mode')
+        print(f'Running contume reference assembly mode\n')
         assembly_list = read_assembly_list()
         
 
     ## Download the ncbi genome list and creates a list with all genomes that need to be download and updated
-    get_the_assembly_summary()
+    database_list = get_the_assembly_summary()
     required_to_update, new_need_to_download, N_already_downloaded_before, assemblies_to_remove, taxonomy_dict = read_genbank_assembly_summary()
-    
+    quit()
+
     ## Creates all log files
     date_start_download = read_and_update_download_history()
     
