@@ -26,24 +26,21 @@ Install ned-flow
 
 The first step is downloading the NED-flow GitHub repository. All of the NED-flow suite is coded in :code:`Nexflow` and :code:`Python`. Only Nextflow needs to be installed, and a number of Python libraries. The two lines of code that need to be run are listed below. 
 
-Downloading/Cloning NED-flow GitHub repository:\
-:code:`git clone https://github.com/kevinnota/NED-flow.git`
-:code:`cd NED-flow`
+|Downloading/Cloning NED-flow GitHub repository:\
+|:code:`git clone https://github.com/kevinnota/NED-flow.git`
+|:code:`cd NED-flow`
 
-Install Python dependencies:\
-:code:`pip install -r ned-py-install.txt`
+|Install Python dependencies:\
+|:code:`pip install -r ned-py-install.txt`
 
-`Test Code`
-
-``Test Code 2``
 
 Reference database setup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 NED-flow uses reference genomes deposited on NCBI (https://www.ncbi.nlm.nih.gov/datasets/genome/). For NED-flow to operate, the database needs to be structured in a certain way. `ned-ref-manager.py` does this in an automated way. There are a lot of genomes available, and by default, NED-flow will download all of them. But to test if NED-flow works and get it up and running, it's recommended to start with a smaller subset of genomes. The full NED-flow database will requite a lot of disk space (~22TB). Its recommended for people that work on a cluster to downloaded and mentain it in a place that is accessable to all users. For this small download its totally alright to download it in the NED-flow directory. 
 
-If you are not in the NED-flow dir yet run:
-   :code:`cd NED-flow`
+|If you are not in the NED-flow dir yet run:
+|:code:`cd NED-flow`
 
 .. line-code:: cd NED-flow
 
