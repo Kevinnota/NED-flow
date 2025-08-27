@@ -77,7 +77,7 @@ To start :code:`NED-flow` some minimal preproccessing is done for each fastq fil
 | Run the NED-flow preprocessing:
 | :code:`nextflow ~/NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
 
-The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
+| The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
 | :code:`ls -la filterd_fastq` 
 
 .. code-block:: none
@@ -94,16 +94,14 @@ The preprocessing results in filtered_fastq directory with one file for each sam
 
 After the preprocessing, the samples are ready for mapping. It is possible to do the mapping locally, on a Slurm or an SGE cluster. The tutorial is using a Slurm cluster.
 
-To start the mapping:
-| :code:`~/NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 20` --path_reference_dbs '/NED-flow/ned_ref_db/' 
-
+| To start the mapping:
+| :code:`~/NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 20 --path_reference_dbs /NED-flow/ned_ref_db/`
 
 Taxonomic assignment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To classify mapped reads
+| To classify mapped reads
 | :code:`NED-flow/ned-classifier.py -b bams/ -t 1 -o slon_taxa_out.tsv -pr .`
-
 
 Detailed documentation
 ====================================
