@@ -40,10 +40,13 @@ Reference database setup
 NED-flow uses reference genomes deposited on NCBI (https://www.ncbi.nlm.nih.gov/datasets/genome/). For NED-flow to operate, the database needs to be structured in a certain way. `ned-ref-manager.py` does this in an automated way. There are a lot of genomes available, and by default, NED-flow will download all of them. But to test if NED-flow works and get it up and running, it's recommended to start with a smaller subset of genomes. The full NED-flow database will require a lot of disk space (~22TB). It's recommended for people who work on a cluster to download and maintain it in a place that is accessible to all users. For this small download (20 taxa), it's totally alright to download it in the NED-flow directory. 
 
 | If you are not in the NED-flow dir yet run:
-| :code:`cd NED-flow`
+| :code:`cd NED-flow` 
+
+| Make a directory for the database
+| :code:`mkdir ned_ref_db` ; cd ned_ref_db
 
 | Download small subset of references:
-| :code:`ned-ref-manager.py --assembly_list ~/NED-flow/example_files/test_files/example_files/costume_refDB_list.txt`
+| :code:`ned-ref-manager.py --assembly_list ~/NED-flow/example_files/costume_refDB_list.txt`
 
 | Ones the reference asseblies are downloaded its time to index them. This is done in Nextflow with the following command. 
 | Index reference database:
@@ -92,7 +95,15 @@ The preprocessing results in filtered_fastq directory with one file for each sam
 After the preprocessing, the samples are ready for mapping. It is possible to do the mapping locally, on a Slurm or an SGE cluster. The tutorial is using a Slurm cluster.
 
 To start the mapping:
-| :code:`~/NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 25` 
+| :code:`~/NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 20` --path_reference_dbs '/NED-flow/ned_ref_db/' 
+
+
+Taxonomic assignment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To classify mapped reads
+| :code:`NED-flow/ned-classifier.py -b bams/ -t 1 -o slon_taxa_out.tsv -pr .`
+
 
 Detailed documentation
 ====================================
