@@ -75,7 +75,7 @@ To start :code:`NED-flow` some minimal preproccessing is done for each fastq fil
 
 | :code:`NED-flow` expects one fastq or unmapped bam per library. :code:`NED-flow` takes a :code:`.tsv` file with the *lib_id* and and *file_path* header. The path can be absolute or relative to the working directory. An example input.tsv can be found in:code:`~/NED-flow/example_files`, the *lib_id* column will be used to link the reads with the fastq/bam file. The *lib_id* column does not require unique names. For fastq files with the same *lib_id*, they will be counted towards the same *lib_id*.
 
-| Run the NED-flow preprocessing with default <35nt. read cut-off and >=10 clow complexity bases:
+| Run the NED-flow preprocessing with default `<35nt.` read cut-off and `>=10` low complexity bases:
 | :code:`nextflow NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
 
 | The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
@@ -91,7 +91,7 @@ To start :code:`NED-flow` some minimal preproccessing is done for each fastq fil
 
 ..  warning ::
    
-   *Do not add new samples after mapping*. NED-flow is set up to be easily updated. To make it easy, it comes at the cost that no new samples can be added to the run after the first mapping has started. This is because NED-flow is concatenating all reads before mapping and then checking with the database if an assembly has been mapped to or not. NED-flow does not check which samples/reads have been mapped. For new samples, make a new directory. It is possible to classify reads over multiple run directories.
+   **Do not add new samples after mapping**. NED-flow is set up to be easily updated. To make it easy, it comes at the cost that no new samples can be added to the run after the first mapping has started. This is because NED-flow is concatenating all reads before mapping and then checking with the database if an assembly has been mapped to or not. NED-flow does not check which samples/reads have been mapped. For new samples, make a new directory. It is possible to classify reads over multiple run directories.
 
 After the preprocessing, the samples are ready for mapping. It is possible to do the mapping locally, on a Slurm or an SGE cluster. The tutorial is using a slurm cluster.
 
@@ -108,7 +108,7 @@ The NED taxonomic classifier reads in all the :code:`.bam` files created during 
 
 ..  warning ::
 
-   *Interpreting the output table*. The table that is created is a summary per assembly. It does not give a summary of reads for any given sample to a given taxonomic rank. With NED, it is possible to check the assembly on which the assignments are based and make a call before creating a summary using different strategies. Check the best practices page for tips on how to go about it.
+   **Interpreting the output table**. The table that is created is a summary per assembly. It does not give a summary of reads for any given sample to a given taxonomic rank. With NED, it is possible to check the assembly on which the assignments are based and make a call before creating a summary using different strategies. Check the best practices page for tips on how to go about it.
 
 
 If everything works, it's time to increase the size of the database. :code:`ned-ref-manager.py` can download all reference assemblies in the *plant*, *vertabrate_other*, *vertabrate_mammal*, and *invertabrate* at the same time using the code:`-db all` option, or indpentendly, code:`-db all`.   
