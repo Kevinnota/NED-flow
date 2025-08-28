@@ -45,11 +45,12 @@ NED-flow uses reference genomes deposited on NCBI (https://www.ncbi.nlm.nih.gov/
 | :code:`mkdir ned_ref_db ; cd ned_ref_db`
 
 | Download small subset of references:
-| :code:`ned-ref-manager.py --assembly_list ~/NED-flow/example_files/costume_refDB_list.txt`
+| :code:`ned-ref-manager.py --assembly_list NED-flow/example_files/costume_refDB_list.txt`
 
-Ones the reference asseblies are downloaded its time to index them. This is done in Nextflow with the following command. 
+Ones the reference asseblies are downloaded its time to index them. This is done in Nextflow with the following command. Indexing can be done locally, on a slurm or sge cluster. In this tutorial we use the slum, but this can be changed with the --executor flagg.
+
 | Index reference database:
-| :code:`ned.nf --build --refgenomes --executor [local/slurm/sge] --path_reference_dbs '/path/to/ref_db/GCA*'`
+| :code:`ned.nf --build --refgenomes --executor slurm --path_reference_dbs NED-flow/ned_ref_db`
 
 .. admonition:: Recommendation
    
@@ -60,9 +61,9 @@ Preprocessing and mapping
 
 To make sure that NED-flow is doing what its suppose to do this tutorial is using two cave sediment papers from `Slon et al., (2017)`_. 
 
-.. _Slon et al., (2017): https://www.science.org/doi/10.1126/science.aam9695. 
+.. _Slon et al., (2017): https://doi.org/10.1126/science.aam9695 
 
-| start with making a directory for run and to store the fastq files:
+| Start with making a directory for run and to store the fastq files:
 | :code:`mkdir my_first_NED my_first_NED/slon_fastqs`
 | :code:`cd my_first_NED`
 
@@ -70,12 +71,12 @@ To make sure that NED-flow is doing what its suppose to do this tutorial is usin
 | :code:`wget -O slon_fastqs/ERR1883475.fastq.gz ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/005/ERR1883475/ERR1883475.fastq.gz`
 | :code:`wget -O slon_fastqs/ERR1883480.fastq.gz ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/000/ERR1883480/ERR1883480.fastq.gz`
 
-To start :code:`NED-flow` some minimal preproccessing is done for each fastq file in the batch. This includes reads length filtering, removal of low quality reads, and reads with low complexity (dust). This is mainly done to speed up the mapping. It is not possible to add new sample to the batch, :code:`NED-flow` after the first mapping.   
+To start :code:`NED-flow` some minimal preproccessing is done for each fastq file in the batch. This includes reads length filtering, removal of low quality reads, and reads with low complexity (dust). This is mainly done to speed up the mapping. It is not possible to add new sample to the batch at a later moment in, :code:`NED-flow` after the first mapping.   
 
-| :code:`NED-flow` NED-flow expects one fastq or unmapped bam per library. :code:`NED-flow` takes a :code:`.tsv` file with the lib_id and and file_path header. The path can be absolute or relative. An example input.tsv can be found in :code:`~/NED-flow/example_files`
+| :code:`NED-flow` expects one fastq or unmapped bam per library. :code:`NED-flow` takes a :code:`.tsv` file with the *lib_id* and and *file_path* header. The path can be absolute or relative to the working directory. An example input.tsv can be found in:code:`~/NED-flow/example_files`, the *lib_id* column will be used to link the reads with the fastq/bam file. The *lib_id* column does not require unique names. For fastq files with the same *lib_id*, they will be counted towards the same *lib_id*.
 
-| Run the NED-flow preprocessing:
-| :code:`nextflow ~/NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
+| Run the NED-flow preprocessing with default <35nt. read cut-off and >=10 clow complexity bases:
+| :code:`nextflow NED-flow/ned.nf --preprocessing --input_fastq_tsv ~/NED-flow/example_files/slon_sample_list.tsv`
 
 | The preprocessing results in filtered_fastq directory with one file for each sample in the input sample_list.tsv:
 | :code:`ls -la filterd_fastq` 
@@ -88,14 +89,14 @@ To start :code:`NED-flow` some minimal preproccessing is done for each fastq fil
    -rw-rw-r-- 1 kevin_nota genetics_g  90644805 Aug 15 14:00 ERR1883475_in_clean.dust.fastq.gz
    -rw-rw-r-- 1 kevin_nota genetics_g 406210349 Aug 15 14:10 ERR1883480_in_clean.dust.fastq.gz
 
-..  warning :: Do not add new samples after mapping
+..  warning ::
    
-   NED-flow is set up to be easily updated. To make it easy, it comes at the cost that no new samples can be added to the run after the first mapping has started. This is because NED-flow is concatenating all reads before mapping and then checking with the database if an assembly has been mapped to or not. NED-flow does not check which samples/reads have been mapped. For new samples, make a new directory. It is possible to classify reads over multiple run directories.
+   *Do not add new samples after mapping*. NED-flow is set up to be easily updated. To make it easy, it comes at the cost that no new samples can be added to the run after the first mapping has started. This is because NED-flow is concatenating all reads before mapping and then checking with the database if an assembly has been mapped to or not. NED-flow does not check which samples/reads have been mapped. For new samples, make a new directory. It is possible to classify reads over multiple run directories.
 
-After the preprocessing, the samples are ready for mapping. It is possible to do the mapping locally, on a Slurm or an SGE cluster. The tutorial is using a Slurm cluster.
+After the preprocessing, the samples are ready for mapping. It is possible to do the mapping locally, on a Slurm or an SGE cluster. The tutorial is using a slurm cluster.
 
 | To start the mapping:
-| :code:`~/NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 20 --path_reference_dbs /NED-flow/ned_ref_db/`
+| :code:`NED-flow/ned.nf --mapping --all --executor slurm --maxForks_cluster 20 --path_reference_dbs /NED-flow/ned_ref_db/`
 
 Taxonomic assignment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,10 +106,12 @@ The NED taxonomic classifier reads in all the :code:`.bam` files created during 
 | To classify mapped reads
 | :code:`NED-flow/ned-classifier.py -b bams/ -t 1 -o slon_taxa_out.tsv -pr .`
 
-..  warning :: Interpreting the output table
+..  warning ::
 
-   The table that is created is a raw summary per assembly. It does not give a summary of reads for any given sample to a given taxonomic rank. With NED, it is possible to check the assembly on which the assignments are based and make a call before creating a summary using different strategies. Check the best practices page for tips on how to go about it.
+   *Interpreting the output table*. The table that is created is a summary per assembly. It does not give a summary of reads for any given sample to a given taxonomic rank. With NED, it is possible to check the assembly on which the assignments are based and make a call before creating a summary using different strategies. Check the best practices page for tips on how to go about it.
 
+
+If everything works, it's time to increase the size of the database. :code:`ned-ref-manager.py` can download all reference assemblies in the *plant*, *vertabrate_other*, *vertabrate_mammal*, and *invertabrate* at the same time using the code:`-db all` option, or indpentendly, code:`-db all`.   
 
 
 Detailed documentation
